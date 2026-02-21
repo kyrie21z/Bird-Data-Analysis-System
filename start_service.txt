@@ -1,0 +1,5 @@
+cd backend
+python run_dev.py
+
+cd frontend
+python -m http.server 8000

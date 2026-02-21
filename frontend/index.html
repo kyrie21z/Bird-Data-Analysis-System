@@ -1,0 +1,1566 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>鸟类数据分析系统</title>
+    
+    <!-- Bootstrap 5 CSS -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <!-- Font Awesome -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Leaflet CSS -->
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
+    <!-- ECharts -->
+    <script src="https://cdn.jsdelivr.net/npm/echarts@5.4.3/dist/echarts.min.js"></script>
+    
+    <style>
+        :root {
+            --primary-color: #2c5aa0;
+            --secondary-color: #3498db;
+            --danger-color: #e74c3c;
+            --warning-color: #f39c12;
+            --success-color: #27ae60;
+        }
+        
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: #f8f9fa;
+        }
+        
+        .navbar-brand {
+            font-weight: bold;
+            color: white !important;
+        }
+        
+        .card {
+            border-radius: 10px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+            transition: transform 0.3s ease;
+            margin-bottom: 20px;
+        }
+        
+        .card:hover {
+            transform: translateY(-5px);
+        }
+        
+        .stat-card {
+            text-align: center;
+            padding: 20px;
+        }
+        
+        .stat-number {
+            font-size: 2.5rem;
+            font-weight: bold;
+            margin: 10px 0;
+        }
+        
+        .stat-label {
+            font-size: 1rem;
+            color: #6c757d;
+        }
+        
+        .endangered-card {
+            border-left: 5px solid var(--danger-color);
+            background-color: #fff5f5;
+        }
+        
+        .endangered-icon {
+            color: var(--danger-color);
+            font-size: 1.5rem;
+        }
+        
+        .progress-container {
+            margin-top: 15px;
+        }
+        
+        .progress-bar-high {
+            background-color: var(--success-color);
+        }
+        
+        .progress-bar-medium {
+            background-color: var(--warning-color);
+        }
+        
+        .progress-bar-low {
+            background-color: var(--danger-color);
+        }
+        
+        #heatmap-map {
+            height: 500px;
+            border-radius: 10px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        }
+        
+        .card-header .d-flex {
+            min-height: 38px;
+            align-items: center !important;
+        }
+        
+        .card-header h5 {
+            margin-bottom: 0;
+            line-height: 1.2;
+            font-size: 1.1rem;
+            display: flex;
+            align-items: center;
+        }
+        
+        .card-header h5 i {
+            margin-right: 6px;
+            font-size: 1rem;
+        }
+        
+        .legend {
+            background: white;
+            padding: 10px;
+            border-radius: 5px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+        }
+        
+        .legend-item {
+            display: flex;
+            align-items: center;
+            margin: 5px 0;
+        }
+        
+        .legend-color {
+            width: 20px;
+            height: 20px;
+            margin-right: 10px;
+            border-radius: 3px;
+        }
+        
+        .loading {
+            text-align: center;
+            padding: 50px;
+        }
+        
+        .footer {
+            background-color: #343a40;
+            color: white;
+            text-align: center;
+            padding: 20px;
+            margin-top: 40px;
+        }
+        
+        /* 移动端优化 */
+        @media (max-width: 768px) {
+            .stat-number {
+                font-size: 1.8rem;
+            }
+            
+            .stat-label {
+                font-size: 0.9rem;
+            }
+            
+            #heatmap-map {
+                height: 350px;
+            }
+            
+            .card {
+                margin-bottom: 15px;
+            }
+            
+            .stat-card {
+                padding: 15px 10px;
+            }
+            
+            .legend {
+                font-size: 0.85rem;
+            }
+        }
+        
+        /* 小屏幕手机优化 */
+        @media (max-width: 576px) {
+            .stat-number {
+                font-size: 1.5rem;
+            }
+            
+            .navbar-brand {
+                font-size: 1rem;
+            }
+            
+            #heatmap-map {
+                height: 280px;
+            }
+            
+            .container {
+                padding-left: 10px;
+                padding-right: 10px;
+            }
+        }
+        
+        /* 加载动画 */
+        .loading-spinner {
+            display: inline-block;
+            width: 20px;
+            height: 20px;
+            border: 3px solid #f3f3f3;
+            border-top: 3px solid var(--primary-color);
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+        }
+        
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        
+        /* 数据更新动画 */
+        .stat-number {
+            transition: all 0.5s ease;
+        }
+        
+        .stat-number.updating {
+            opacity: 0.5;
+            transform: scale(0.95);
+        }
+        
+        /* 按钮点击效果 */
+        .btn {
+            transition: all 0.2s ease;
+        }
+        
+        .btn:active {
+            transform: scale(0.95);
+        }
+        
+        /* 错误提示样式 */
+        .error-toast {
+            background-color: #dc3545;
+            color: white;
+        }
+        
+        .success-toast {
+            background-color: #28a745;
+            color: white;
+        }
+        
+        /* 图表容器样式 */
+        .chart-card {
+            border-radius: 10px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+            margin-bottom: 20px;
+            overflow: hidden;
+        }
+        
+        .chart-card .card-header {
+            background: linear-gradient(135deg, var(--primary-color), var(--secondary-color));
+            color: white;
+            border-bottom: none;
+            padding: 15px 20px;
+        }
+        
+        .chart-card .card-header h5 {
+            margin: 0;
+            font-weight: 600;
+        }
+        
+        .chart-container {
+            height: 300px;
+            padding: 15px;
+        }
+        
+        /* 可点击图表卡片 */
+        .chart-clickable {
+            cursor: pointer;
+            transition: all 0.3s ease;
+            position: relative;
+        }
+        
+        .chart-clickable:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 8px 20px rgba(0, 0, 0, 0.15);
+        }
+        
+        .chart-clickable .card-header .click-hint {
+            font-size: 0.75rem;
+            color: rgba(255, 255, 255, 0.8);
+            background: rgba(255, 255, 255, 0.15);
+            padding: 4px 10px;
+            border-radius: 15px;
+            transition: all 0.3s ease;
+        }
+        
+        .chart-clickable:hover .card-header .click-hint {
+            background: rgba(255, 255, 255, 0.25);
+            color: white;
+        }
+        
+        .chart-clickable .card-body {
+            cursor: default;
+        }
+        
+        /* 渐变背景 */
+        .gradient-bg {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        }
+        
+        .navbar {
+            background: linear-gradient(90deg, var(--primary-color) 0%, #4a90d9 100%) !important;
+        }
+        
+        /* 统计卡片增强 */
+        .stat-card {
+            text-align: center;
+            padding: 20px;
+            background: linear-gradient(145deg, #ffffff, #f0f4f8);
+            border: none;
+        }
+        
+        .stat-card-clickable {
+            cursor: pointer;
+            transition: all 0.3s ease;
+            position: relative;
+            overflow: hidden;
+        }
+        
+        .stat-card-clickable:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 8px 15px rgba(0, 0, 0, 0.15);
+        }
+        
+        .stat-card-clickable::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: -100%;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(90deg, transparent, rgba(255,255,255,0.4), transparent);
+            transition: left 0.5s ease;
+        }
+        
+        .stat-card-clickable:hover::before {
+            left: 100%;
+        }
+        
+        .click-hint {
+            font-size: 0.75rem;
+            color: #6c757d;
+            margin-top: 8px;
+            opacity: 0.7;
+            transition: opacity 0.3s ease;
+        }
+        
+        .stat-card-clickable:hover .click-hint {
+            opacity: 1;
+            color: var(--primary-color);
+        }
+        
+        .stat-card .card-body {
+            padding: 1.5rem;
+        }
+        
+        .stat-icon {
+            width: 60px;
+            height: 60px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin: 0 auto 15px;
+            font-size: 1.5rem;
+        }
+        
+        .stat-icon-primary {
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            color: white;
+        }
+        
+        .stat-icon-info {
+            background: linear-gradient(135deg, #3498db, #2980b9);
+            color: white;
+        }
+        
+        .stat-icon-danger {
+            background: linear-gradient(135deg, #e74c3c, #c0392b);
+            color: white;
+        }
+        
+        .stat-icon-success {
+            background: linear-gradient(135deg, #27ae60, #1e8449);
+            color: white;
+        }
+    </style>
+</head>
+<body>
+    <!-- 导航栏 -->
+    <nav class="navbar navbar-expand-lg navbar-dark bg-primary">
+        <div class="container">
+            <a class="navbar-brand" href="/">
+                <i class="fas fa-dove"></i> 鸟类数据分析系统 V1.0
+            </a>
+            <div class="navbar-nav ms-auto">
+                <a class="nav-link active" href="/">仪表盘</a>
+                <a class="nav-link" href="/data.html">数据管理</a>
+            </div>
+        </div>
+    </nav>
+
+    <div class="container mt-4">
+        <!-- 统计指标卡片 -->
+        <div class="row">
+            <div class="col-md-3 col-sm-6">
+                <div class="card stat-card stat-card-clickable" onclick="window.location.href='species.html'" title="点击查看物种列表">
+                    <div class="card-body">
+                        <div class="stat-icon stat-icon-primary">
+                            <i class="fas fa-feather-alt"></i>
+                        </div>
+                        <div class="stat-number" id="species-count">-</div>
+                        <div class="stat-label">物种丰富度</div>
+                        <small class="text-success" id="change-percent">-</small>
+                        <div class="click-hint"><i class="fas fa-external-link-alt"></i> 点击查看</div>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="col-md-3 col-sm-6">
+                <div class="card stat-card stat-card-clickable" onclick="window.location.href='data.html'" title="点击查看所有观测记录">
+                    <div class="card-body">
+                        <div class="stat-icon stat-icon-info">
+                            <i class="fas fa-crow"></i>
+                        </div>
+                        <div class="stat-number" id="total-individuals">-</div>
+                        <div class="stat-label">个体总数</div>
+                        <small class="text-muted">所有已确认记录</small>
+                        <div class="click-hint"><i class="fas fa-external-link-alt"></i> 点击查看</div>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="col-md-3 col-sm-6">
+                <div class="card stat-card endangered-card stat-card-clickable" onclick="window.location.href='data.html?endangered=true'" title="点击查看濒危物种记录">
+                    <div class="card-body">
+                        <div class="stat-icon stat-icon-danger">
+                            <i class="fas fa-exclamation-triangle"></i>
+                        </div>
+                        <div class="stat-number text-danger" id="endangered-count">-</div>
+                        <div class="stat-label">濒危物种出现</div>
+                        <small>EN/CR/VU级别物种</small>
+                        <div class="click-hint"><i class="fas fa-external-link-alt"></i> 点击查看</div>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="col-md-3 col-sm-6">
+                <div class="card stat-card stat-card-clickable" onclick="window.location.href='data-quality.html'" title="点击查看数据质量详情">
+                    <div class="card-body">
+                        <div class="stat-icon stat-icon-success">
+                            <i class="fas fa-chart-line"></i>
+                        </div>
+                        <div class="stat-number" id="completeness-rate">-</div>
+                        <div class="stat-label">近7天数据完整率</div>
+                        <div class="progress-container">
+                            <div class="progress" style="height: 10px;">
+                                <div class="progress-bar" id="completeness-progress" role="progressbar"></div>
+                            </div>
+                        </div>
+                        <div class="click-hint"><i class="fas fa-external-link-alt"></i> 点击查看</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 图表区域 -->
+        <div class="row mt-4">
+            <!-- 物种分布饼图 -->
+            <div class="col-md-4">
+                <div class="card chart-card chart-clickable" onclick="window.location.href='species-distribution.html'" title="点击查看物种分布详情">
+                    <div class="card-header d-flex justify-content-between align-items-center">
+                        <h5 class="mb-0"><i class="fas fa-chart-pie me-2"></i>物种分布</h5>
+                        <span class="click-hint"><i class="fas fa-external-link-alt"></i> 点击查看详情</span>
+                    </div>
+                    <div class="card-body" onclick="event.stopPropagation();">
+                        <div id="species-chart" class="chart-container"></div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- 趋势折线图 -->
+            <div class="col-md-8">
+                <div class="card chart-card chart-clickable" onclick="window.location.href='trend-analysis.html'" title="点击查看观测趋势详情">
+                    <div class="card-header">
+                        <div class="d-flex justify-content-between align-items-center">
+                            <h5 class="mb-0"><i class="fas fa-chart-line me-2"></i>观测趋势</h5>
+                            <div class="d-flex align-items-center gap-2">
+                                <span class="click-hint"><i class="fas fa-external-link-alt"></i> 点击查看详情</span>
+                                <div class="btn-group" role="group" onclick="event.stopPropagation();">
+                                    <button type="button" class="btn btn-sm btn-outline-light active" data-chart-days="7">7天</button>
+                                    <button type="button" class="btn btn-sm btn-outline-light" data-chart-days="14">14天</button>
+                                    <button type="button" class="btn btn-sm btn-outline-light" data-chart-days="30">30天</button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="card-body" onclick="event.stopPropagation();">
+                        <div id="trend-chart" class="chart-container"></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="row mt-2">
+            <!-- 区域分布柱状图 -->
+            <div class="col-12">
+                <div class="card chart-card">
+                    <div class="card-header">
+                        <h5><i class="fas fa-chart-bar me-2"></i>区域观测分布</h5>
+                    </div>
+                    <div class="card-body">
+                        <div id="area-chart" class="chart-container" style="height: 350px;"></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 热力图区域 -->
+        <div class="row mt-4">
+            <div class="col-12">
+                <div class="card">
+                    <div class="card-header bg-white">
+                        <div class="d-flex justify-content-between align-items-center">
+                            <h5 class="mb-0">
+                                <i class="fas fa-map-marked-alt"></i> 时空热力图
+                            </h5>
+                            <div class="btn-group" role="group">
+                                <button type="button" class="btn btn-sm btn-outline-primary" data-days="1">今日</button>
+                                <button type="button" class="btn btn-sm btn-primary active" data-days="7">7天</button>
+                                <button type="button" class="btn btn-sm btn-outline-primary" data-days="30">30天</button>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="card-body">
+                        <div id="heatmap-map"></div>
+                        <div class="mt-3">
+                            <div class="legend heatmap-legend">
+                                <h6>图例</h6>
+                                <div class="legend-items">
+                                    <div class="legend-item">
+                                        <div class="legend-color" style="background-color: #95a5a6;"></div>
+                                        <span>无记录</span>
+                                    </div>
+                                    <div class="legend-item">
+                                        <div class="legend-color" style="background-color: #ffffb2;"></div>
+                                        <span>1-5次观测</span>
+                                    </div>
+                                    <div class="legend-item">
+                                        <div class="legend-color" style="background-color: #fecc5c;"></div>
+                                        <span>6-10次观测</span>
+                                    </div>
+                                    <div class="legend-item">
+                                        <div class="legend-color" style="background-color: #fd8d3c;"></div>
+                                        <span>11-20次观测</span>
+                                    </div>
+                                    <div class="legend-item">
+                                        <div class="legend-color" style="background-color: #f03b20;"></div>
+                                        <span>20次以上观测</span>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 页脚 -->
+    <footer class="footer">
+        <div class="container">
+            <p class="mb-0">©2025 | 本系统基于MySQL+Flask开发</p>
+        </div>
+    </footer>
+
+    <!-- Toast 容器 -->
+    <div class="toast-container position-fixed bottom-0 end-0 p-3">
+        <div id="toast" class="toast" role="alert">
+            <div class="toast-header">
+                <strong class="me-auto">系统提示</strong>
+                <button type="button" class="btn-close" data-bs-dismiss="toast"></button>
+            </div>
+            <div class="toast-body" id="toast-message"></div>
+        </div>
+    </div>
+
+    <!-- JavaScript Libraries -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <!-- Leaflet Heatmap Plugin -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet.heat/0.2.0/leaflet-heat.js"></script>
+    
+    <script>
+        // 全局变量
+        let map;
+        let heatmapLayer;
+        let currentDays = 7;
+        let currentChartDays = 7;
+        
+        // ECharts 实例
+        let speciesChart = null;
+        let trendChart = null;
+        let areaChart = null;
+
+        // 初始化应用
+        document.addEventListener('DOMContentLoaded', function() {
+            initializeMap();
+            loadStatistics();
+            loadHeatmapData(currentDays);
+            initializeCharts();
+            setupEventListeners();
+        });
+
+        // 初始化地图
+        function initializeMap() {
+            console.log('开始初始化地图...');
+            
+            // 检查地图容器是否存在
+            const mapContainer = document.getElementById('heatmap-map');
+            if (!mapContainer) {
+                console.error('地图容器 #heatmap-map 不存在');
+                return;
+            }
+            console.log('地图容器存在，尺寸:', mapContainer.offsetWidth, 'x', mapContainer.offsetHeight);
+            
+            // 创建地图实例（西溪湿地为中心）
+            // 中心坐标：30°16'05.0"N 120°03'58.7"E = 30.26806, 120.06631
+            // 设置初始缩放级别为14，适合查看西溪湿地区域
+            map = L.map('heatmap-map', {
+                center: [30.26806, 120.06631],
+                zoom: 14,
+                minZoom: 12,  // 限制最小缩放，避免视野过大
+                maxZoom: 19,
+                zoomControl: true,
+                attributionControl: true
+            });
+            
+            console.log('地图实例创建成功');
+            
+            // 定义多个瓦片图层源（按优先级排序）
+            const tileSources = [
+                {
+                    name: 'OpenStreetMap',
+                    url: 'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',
+                    options: {
+                        attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
+                        maxZoom: 19
+                    }
+                },
+                {
+                    name: 'CartoDB Positron',
+                    url: 'https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png',
+                    options: {
+                        attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/attributions">CARTO</a>',
+                        maxZoom: 19
+                    }
+                },
+                {
+                    name: 'CartoDB Voyager',
+                    url: 'https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png',
+                    options: {
+                        attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/attributions">CARTO</a>',
+                        maxZoom: 19
+                    }
+                }
+            ];
+            
+            let currentSourceIndex = 0;
+            let currentTileLayer = null;
+            
+            // 加载瓦片图层的函数
+            function loadTileLayer(sourceIndex) {
+                if (sourceIndex >= tileSources.length) {
+                    console.error('所有瓦片源都加载失败');
+                    // 显示错误信息在地图上
+                    mapContainer.innerHTML = '<div style="display:flex;justify-content:center;align-items:center;height:100%;background:#f0f0f0;color:#666;"><p>地图加载失败，请检查网络连接</p></div>';
+                    return;
+                }
+                
+                const source = tileSources[sourceIndex];
+                console.log(`尝试加载瓦片源: ${source.name}`);
+                
+                // 移除之前的图层
+                if (currentTileLayer) {
+                    map.removeLayer(currentTileLayer);
+                }
+                
+                // 创建新图层
+                currentTileLayer = L.tileLayer(source.url, source.options);
+                
+                // 监听加载成功事件
+                currentTileLayer.on('load', function() {
+                    console.log(`瓦片源 ${source.name} 加载成功`);
+                });
+                
+                // 监听加载错误事件
+                let errorCount = 0;
+                currentTileLayer.on('tileerror', function(error) {
+                    errorCount++;
+                    // 如果连续多个瓦片加载失败，切换到下一个源
+                    if (errorCount >= 3) {
+                        console.warn(`瓦片源 ${source.name} 加载失败，切换到下一个源...`);
+                        loadTileLayer(sourceIndex + 1);
+                    }
+                });
+                
+                currentTileLayer.addTo(map);
+            }
+            
+            // 开始加载第一个瓦片源
+            loadTileLayer(0);
+            
+            // 添加比例尺
+            L.control.scale().addTo(map);
+            
+            // 添加定位按钮（回到西溪湿地中心）
+            addLocateButton();
+            
+            console.log('地图初始化完成');
+        }
+        
+        // 添加定位按钮
+        function addLocateButton() {
+            // 创建自定义定位控件
+            const locateControl = L.control({position: 'bottomright'});
+            
+            locateControl.onAdd = function(map) {
+                const div = L.DomUtil.create('div', 'leaflet-bar leaflet-control locate-button');
+                div.innerHTML = `
+                    <a href="#" title="回到西溪湿地中心" style="
+                        display: flex;
+                        align-items: center;
+                        justify-content: center;
+                        width: 36px;
+                        height: 36px;
+                        background: white;
+                        border-radius: 4px;
+                        box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+                        color: #2c5aa0;
+                        font-size: 18px;
+                        text-decoration: none;
+                        transition: all 0.3s ease;
+                    " onmouseover="this.style.background='#f0f0f0'" onmouseout="this.style.background='white'">
+                        <i class="fas fa-crosshairs"></i>
+                    </a>
+                `;
+                
+                // 阻止事件冒泡
+                L.DomEvent.disableClickPropagation(div);
+                
+                // 点击事件
+                div.querySelector('a').addEventListener('click', function(e) {
+                    e.preventDefault();
+                    // 平滑动画回到西溪湿地中心
+                    map.flyTo([30.26806, 120.06631], 14, {
+                        duration: 1.5,
+                        easeLinearity: 0.25
+                    });
+                    showToast('已定位到西溪湿地中心', 'success');
+                });
+                
+                return div;
+            };
+            
+            locateControl.addTo(map);
+        }
+
+        // 显示加载状态
+        function showLoading(elementId) {
+            const element = document.getElementById(elementId);
+            if (element) {
+                element.classList.add('updating');
+                element.innerHTML = '<div class="loading-spinner"></div>';
+            }
+        }
+        
+        // 隐藏加载状态
+        function hideLoading(elementId, content) {
+            const element = document.getElementById(elementId);
+            if (element) {
+                element.classList.remove('updating');
+                // 提取数字
+                const match = content.match(/^(\d+)(\D*)$/);
+                if (match) {
+                    const num = parseInt(match[1]);
+                    const suffix = match[2];
+                    animateValue(element, 0, num, 1000, suffix);
+                } else {
+                    element.textContent = content;
+                }
+            }
+        }
+
+        // 数字动画
+        function animateValue(obj, start, end, duration, suffix = '') {
+            let startTimestamp = null;
+            const step = (timestamp) => {
+                if (!startTimestamp) startTimestamp = timestamp;
+                const progress = Math.min((timestamp - startTimestamp) / duration, 1);
+                const value = Math.floor(progress * (end - start) + start);
+                obj.textContent = value + suffix;
+                if (progress < 1) {
+                    window.requestAnimationFrame(step);
+                } else {
+                    obj.textContent = end + suffix;
+                }
+            };
+            window.requestAnimationFrame(step);
+        }
+
+        // API 基础 URL
+        const API_BASE_URL = 'http://localhost:5000';
+        
+        // 加载统计数据（带错误重试机制）
+        function loadStatistics(retryCount = 0) {
+            const maxRetries = 3;
+            
+            // 显示加载状态
+            showLoading('species-count');
+            showLoading('total-individuals');
+            showLoading('endangered-count');
+            showLoading('completeness-rate');
+            
+            fetch(`${API_BASE_URL}/api/stats`)
+                .then(response => {
+                    if (!response.ok) {
+                        throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+                    }
+                    return response.json();
+                })
+                .then(data => {
+                    if (data.success) {
+                        // 更新统计数据（带动画效果）
+                        hideLoading('species-count', data.data.species_count + '种');
+                        hideLoading('total-individuals', data.data.total_individuals + '只');
+                        hideLoading('endangered-count', data.data.endangered_count + '次');
+                        hideLoading('completeness-rate', data.data.completeness_rate + '%');
+                        
+                        // 更新完整率进度条
+                        const progressBar = document.getElementById('completeness-progress');
+                        progressBar.style.width = data.data.completeness_rate + '%';
+                        progressBar.textContent = data.data.completeness_rate + '%';
+                        
+                        // 根据完整率设置颜色
+                        if (data.data.completeness_rate >= 90) {
+                            progressBar.className = 'progress-bar progress-bar-high';
+                        } else if (data.data.completeness_rate >= 70) {
+                            progressBar.className = 'progress-bar progress-bar-medium';
+                        } else {
+                            progressBar.className = 'progress-bar progress-bar-low';
+                        }
+                        
+                        // 显示环比变化
+                        const changePercent = data.data.change_percent;
+                        const changeElement = document.getElementById('change-percent');
+                        if (changePercent > 0) {
+                            changeElement.innerHTML = `<i class="fas fa-arrow-up"></i> ${changePercent}%`;
+                            changeElement.className = 'text-success';
+                        } else if (changePercent < 0) {
+                            changeElement.innerHTML = `<i class="fas fa-arrow-down"></i> ${Math.abs(changePercent)}%`;
+                            changeElement.className = 'text-danger';
+                        } else {
+                            changeElement.textContent = '持平';
+                            changeElement.className = 'text-muted';
+                        }
+                        
+                        // 显示缓存提示（如果数据来自缓存）
+                        if (data.data.cached) {
+                            console.log('统计数据来自缓存');
+                        }
+                    } else {
+                        throw new Error(data.message || '获取统计数据失败');
+                    }
+                })
+                .catch(error => {
+                    console.error('Error loading statistics:', error);
+                    
+                    // 重试机制
+                    if (retryCount < maxRetries) {
+                        console.log(`统计数据加载失败，${2 * (retryCount + 1)}秒后重试...`);
+                        setTimeout(() => loadStatistics(retryCount + 1), 2000 * (retryCount + 1));
+                    } else {
+                        // 显示错误状态
+                        hideLoading('species-count', '--');
+                        hideLoading('total-individuals', '--');
+                        hideLoading('endangered-count', '--');
+                        hideLoading('completeness-rate', '--');
+                        showToast(`获取统计数据失败: ${error.message}`, 'error');
+                    }
+                });
+        }
+
+        // 加载热力图数据（带平滑过渡动画）
+        function loadHeatmapData(days = 7, retryCount = 0) {
+            const maxRetries = 3;
+            currentDays = days;
+            
+            // 显示加载状态
+            const mapContainer = document.getElementById('heatmap-map');
+            mapContainer.style.opacity = '0.7';
+            
+            fetch(`${API_BASE_URL}/api/heatmap?days=${days}`)
+                .then(response => {
+                    if (!response.ok) {
+                        throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+                    }
+                    return response.json();
+                })
+                .then(data => {
+                    if (data.success) {
+                        // 恢复透明度并渲染热力图
+                        mapContainer.style.opacity = '1';
+                        renderHeatmap(data.data);
+                        
+                        // 显示缓存提示
+                        if (data.meta && data.meta.cached) {
+                            console.log('热力图数据来自缓存');
+                        }
+                    } else {
+                        throw new Error(data.message || '获取热力图数据失败');
+                    }
+                })
+                .catch(error => {
+                    console.error('Error loading heatmap data:', error);
+                    mapContainer.style.opacity = '1';
+                    
+                    // 重试机制
+                    if (retryCount < maxRetries) {
+                        console.log(`热力图数据加载失败，${2 * (retryCount + 1)}秒后重试...`);
+                        setTimeout(() => loadHeatmapData(days, retryCount + 1), 2000 * (retryCount + 1));
+                    } else {
+                        showToast(`获取热力图数据失败: ${error.message}`, 'error');
+                    }
+                });
+        }
+
+        // 渲染热力图
+        function renderHeatmap(data) {
+            console.log('渲染热力图，数据点数量:', data.length);
+            console.log('热力图数据样本:', data.slice(0, 3));
+            
+            // 清除之前的图层
+            if (heatmapLayer) {
+                map.removeLayer(heatmapLayer);
+            }
+            
+            // 准备热力图数据
+            // 注意：API 返回的 lat/lng 字段与值不匹配，需要交换
+            // lat 字段实际存储的是经度，lng 字段实际存储的是纬度
+            const heatData = data.map(point => {
+                // 交换 lat 和 lng 的值
+                const lat = parseFloat(point.lng);  // lng 字段实际存储纬度
+                const lng = parseFloat(point.lat);  // lat 字段实际存储经度
+                return [lat, lng, point.count];
+            });
+            
+            console.log('处理后的热力图数据样本:', heatData.slice(0, 3));
+            
+            // 创建热力图图层
+            heatmapLayer = L.heatLayer(heatData, {
+                radius: 25,
+                blur: 15,
+                maxZoom: 17,
+                gradient: {
+                    0.0: '#ffffb2',
+                    0.2: '#fecc5c',
+                    0.4: '#fd8d3c',
+                    0.6: '#f03b20',
+                    1.0: '#bd0026'
+                }
+            }).addTo(map);
+            
+            // 如果有数据点，调整地图视野到西溪湿地
+            if (data.length > 0) {
+                // 使用西溪湿地中心位置
+                map.setView([30.26806, 120.06631], 14);
+            }
+            
+            // 加载设备标记
+            loadDeviceMarkers(currentDays);
+        }
+
+        // 设备标记图层
+        let deviceMarkersLayer = null;
+        
+        // 加载设备标记
+        function loadDeviceMarkers(days = 7) {
+            fetch(`${API_BASE_URL}/api/devices/with-stats?days=${days}`)
+                .then(response => response.json())
+                .then(result => {
+                    if (result.success) {
+                        renderDeviceMarkers(result.data);
+                    } else {
+                        console.error('获取设备列表失败:', result.error);
+                    }
+                })
+                .catch(error => console.error('加载设备标记失败:', error));
+        }
+
+        // 渲染设备标记
+        function renderDeviceMarkers(devices) {
+            // 清除之前的设备标记
+            if (deviceMarkersLayer) {
+                map.removeLayer(deviceMarkersLayer);
+            }
+            
+            deviceMarkersLayer = L.layerGroup();
+            
+            // 计算动态分层阈值
+            const counts = devices.map(d => d.stats.observation_count).filter(c => c > 0);
+            let thresholds = [5, 10, 20];
+            if (counts.length > 0) {
+                const maxCount = Math.max(...counts);
+                if (maxCount <= 5) {
+                    thresholds = [2, 4, 5];
+                } else if (maxCount <= 10) {
+                    thresholds = [3, 6, 10];
+                } else if (maxCount <= 20) {
+                    thresholds = [5, 10, 20];
+                }
+                // 更新图例
+                updateLegend(thresholds, maxCount);
+            }
+            
+            // 颜色映射函数
+            function getMarkerColor(count) {
+                if (count === 0) return '#95a5a6';  // 灰色-无记录
+                if (count <= thresholds[0]) return '#ffffb2';  // 浅黄色
+                if (count <= thresholds[1]) return '#fecc5c';  // 橙黄色
+                if (count <= thresholds[2]) return '#fd8d3c';  // 橙红色
+                return '#f03b20';  // 深红色
+            }
+            
+            devices.forEach(device => {
+                const count = device.stats.observation_count;
+                const color = getMarkerColor(count);
+                
+                // 创建自定义图标 - 根据观测次数动态设置颜色
+                const markerIcon = L.divIcon({
+                    className: 'device-marker',
+                    html: `<div style="
+                        width: 20px;
+                        height: 20px;
+                        background: ${color};
+                        border: 3px solid white;
+                        border-radius: 50%;
+                        box-shadow: 0 2px 6px rgba(0,0,0,0.4);
+                        cursor: pointer;
+                    "></div>`,
+                    iconSize: [20, 20],
+                    iconAnchor: [10, 10]
+                });
+                
+                // 创建标记
+                const marker = L.marker([device.latitude, device.longitude], { icon: markerIcon });
+                
+                // 获取颜色对应的范围文本
+                function getCountRangeText(c) {
+                    if (c === 0) return '无记录';
+                    if (c <= thresholds[0]) return `1-${thresholds[0]}次`;
+                    if (c <= thresholds[1]) return `${thresholds[0]+1}-${thresholds[1]}次`;
+                    if (c <= thresholds[2]) return `${thresholds[1]+1}-${thresholds[2]}次`;
+                    return `${thresholds[2]}次以上`;
+                }
+                
+                // 构建物种列表HTML
+                let speciesHtml = '';
+                if (device.species_list && device.species_list.length > 0) {
+                    speciesHtml = device.species_list.slice(0, 3).map(s => 
+                        `<span class="badge bg-info me-1">${s.name}: ${s.count}</span>`
+                    ).join('');
+                    if (device.species_list.length > 3) {
+                        speciesHtml += `<span class="badge bg-secondary">+${device.species_list.length - 3}种</span>`;
+                    }
+                } else {
+                    speciesHtml = '<span class="text-muted">暂无物种记录</span>';
+                }
+                
+                // 创建悬停弹窗内容
+                const popupContent = `
+                    <div style="min-width: 200px;">
+                        <h6 style="margin: 0 0 10px 0; color: #2c5aa0; border-bottom: 1px solid #eee; padding-bottom: 5px;">
+                            <i class="fas fa-satellite-dish me-1"></i>${device.serial_number}
+                        </h6>
+                        <p style="margin: 5px 0; font-size: 13px;">
+                            <strong>设备型号:</strong> ${device.model}
+                        </p>
+                        <p style="margin: 5px 0; font-size: 13px;">
+                            <strong>所属区域:</strong> ${device.area_name || '未知'}
+                        </p>
+                        <p style="margin: 5px 0; font-size: 13px;">
+                            <strong>观测记录:</strong> ${device.stats.observation_count} 条
+                        </p>
+                        <p style="margin: 5px 0; font-size: 13px;">
+                            <strong>观测个体:</strong> ${device.stats.individual_count} 只
+                        </p>
+                        <p style="margin: 5px 0; font-size: 13px;">
+                            <strong>观测密度:</strong> 
+                            <span style="display: inline-block; width: 12px; height: 12px; background: ${color}; border: 1px solid #999; vertical-align: middle; margin: 0 4px;"></span>
+                            ${getCountRangeText(count)}
+                        </p>
+                        <div style="margin-top: 8px; font-size: 12px;">
+                            <strong>物种:</strong><br/>
+                            ${speciesHtml}
+                        </div>
+                        <div style="margin-top: 10px; text-align: center;">
+                            <a href="data.html?device_id=${device.id}" 
+                               class="btn btn-sm" 
+                               style="font-size: 12px; padding: 4px 12px; background: #2c5aa0; color: white; border: none; text-decoration: none;">
+                                <i class="fas fa-list me-1"></i>查看记录
+                            </a>
+                        </div>
+                    </div>
+                `;
+                
+                // 绑定弹窗
+                marker.bindPopup(popupContent, {
+                    maxWidth: 280,
+                    className: 'device-popup'
+                });
+                
+                // 添加到图层组
+                marker.addTo(deviceMarkersLayer);
+            });
+            
+            // 添加到地图
+            deviceMarkersLayer.addTo(map);
+        }
+        
+        // 更新图例
+        function updateLegend(thresholds, maxCount) {
+            const legendEl = document.querySelector('.heatmap-legend .legend-items');
+            if (!legendEl) return;
+            
+            legendEl.innerHTML = `
+                <div class="legend-item">
+                    <div class="legend-color" style="background-color: #95a5a6;"></div>
+                    <span>无记录</span>
+                </div>
+                <div class="legend-item">
+                    <div class="legend-color" style="background-color: #ffffb2;"></div>
+                    <span>1-${thresholds[0]}次</span>
+                </div>
+                <div class="legend-item">
+                    <div class="legend-color" style="background-color: #fecc5c;"></div>
+                    <span>${thresholds[0]+1}-${thresholds[1]}次</span>
+                </div>
+                <div class="legend-item">
+                    <div class="legend-color" style="background-color: #fd8d3c;"></div>
+                    <span>${thresholds[1]+1}-${thresholds[2]}次</span>
+                </div>
+                <div class="legend-item">
+                    <div class="legend-color" style="background-color: #f03b20;"></div>
+                    <span>${thresholds[2]}次以上</span>
+                </div>
+            `;
+        }
+
+        // 设置事件监听器
+        function setupEventListeners() {
+            // 时间筛选按钮（热力图模块）
+            document.querySelectorAll('[data-days]').forEach(button => {
+                button.addEventListener('click', function() {
+                    // 更新按钮状态
+                    document.querySelectorAll('[data-days]').forEach(btn => {
+                        btn.classList.remove('btn-primary', 'active');
+                        btn.classList.add('btn-outline-primary');
+                    });
+                    this.classList.remove('btn-outline-primary');
+                    this.classList.add('btn-primary', 'active');
+                    
+                    // 加载对应时间段的数据
+                    const days = parseInt(this.getAttribute('data-days'));
+                    currentDays = days;
+                    loadHeatmapData(days);
+                    loadDeviceMarkers(days);  // 同时刷新设备标记
+                });
+            });
+            
+            // 图表时间筛选按钮
+            document.querySelectorAll('[data-chart-days]').forEach(button => {
+                button.addEventListener('click', function() {
+                    // 更新按钮状态
+                    document.querySelectorAll('[data-chart-days]').forEach(btn => {
+                        btn.classList.remove('active');
+                    });
+                    this.classList.add('active');
+                    
+                    // 加载对应时间段的趋势数据
+                    const days = parseInt(this.getAttribute('data-chart-days'));
+                    loadTrendData(days);
+                });
+            });
+        }
+
+        // 显示Toast消息（优化版本）
+        function showToast(message, type = 'info', duration = 5000) {
+            const toastElement = document.getElementById('toast');
+            const toastBody = document.getElementById('toast-message');
+            const toastHeader = toastElement.querySelector('.toast-header');
+            
+            // 设置消息内容
+            toastBody.textContent = message;
+            
+            // 设置不同类型的样式
+            toastElement.className = 'toast';
+            toastHeader.className = 'toast-header';
+            
+            if (type === 'error') {
+                toastElement.classList.add('error-toast');
+                toastHeader.classList.add('bg-danger', 'text-white');
+                toastHeader.innerHTML = '<i class="fas fa-exclamation-circle me-2"></i><strong class="me-auto">错误</strong>';
+            } else if (type === 'success') {
+                toastElement.classList.add('success-toast');
+                toastHeader.classList.add('bg-success', 'text-white');
+                toastHeader.innerHTML = '<i class="fas fa-check-circle me-2"></i><strong class="me-auto">成功</strong>';
+            } else if (type === 'warning') {
+                toastHeader.classList.add('bg-warning', 'text-dark');
+                toastHeader.innerHTML = '<i class="fas fa-exclamation-triangle me-2"></i><strong class="me-auto">警告</strong>';
+            } else {
+                toastHeader.innerHTML = '<i class="fas fa-info-circle me-2"></i><strong class="me-auto">提示</strong>';
+            }
+            
+            // 添加关闭按钮
+            toastHeader.innerHTML += '<button type="button" class="btn-close btn-close-white" data-bs-dismiss="toast"></button>';
+            
+            // 显示Toast
+            const toast = new bootstrap.Toast(toastElement, {
+                delay: duration,
+                autohide: true
+            });
+            toast.show();
+            
+            // 控制台日志
+            if (type === 'error') {
+                console.error(`Toast Error: ${message}`);
+            } else {
+                console.log(`Toast: ${message}`);
+            }
+        }
+
+        // 初始化图表
+        function initializeCharts() {
+            // 物种分布饼图
+            const speciesChartDom = document.getElementById('species-chart');
+            if (speciesChartDom) {
+                speciesChart = echarts.init(speciesChartDom);
+            }
+            
+            // 趋势折线图
+            const trendChartDom = document.getElementById('trend-chart');
+            if (trendChartDom) {
+                trendChart = echarts.init(trendChartDom);
+            }
+            
+            // 区域分布柱状图
+            const areaChartDom = document.getElementById('area-chart');
+            if (areaChartDom) {
+                areaChart = echarts.init(areaChartDom);
+            }
+            
+            // 加载图表数据
+            loadSpeciesDistribution();
+            loadTrendData(currentChartDays);
+            loadAreaDistribution();
+            
+            // 响应式调整
+            window.addEventListener('resize', function() {
+                if (speciesChart) speciesChart.resize();
+                if (trendChart) trendChart.resize();
+                if (areaChart) areaChart.resize();
+            });
+        }
+
+        // 加载物种分布数据
+        function loadSpeciesDistribution() {
+            fetch(`${API_BASE_URL}/api/stats/species-distribution`)
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        renderSpeciesChart(data.data);
+                    }
+                })
+                .catch(error => console.error('加载物种分布失败:', error));
+        }
+
+        // 渲染物种分布饼图
+        function renderSpeciesChart(data) {
+            if (!speciesChart || !data || data.length === 0) {
+                return;
+            }
+            
+            const option = {
+                tooltip: {
+                    trigger: 'item',
+                    formatter: function(params) {
+                        return `${params.name}<br/>观测次数: ${params.value} (${params.data.percentage}%)`;
+                    }
+                },
+                legend: {
+                    orient: 'horizontal',
+                    bottom: 0,
+                    textStyle: {
+                        fontSize: 11
+                    },
+                    itemWidth: 12,
+                    itemHeight: 12,
+                    itemGap: 8
+                },
+                grid: {
+                    top: '5%',
+                    bottom: '25%',
+                    left: '5%',
+                    right: '5%',
+                    containLabel: true
+                },
+                series: [
+                    {
+                        name: '物种分布',
+                        type: 'pie',
+                        radius: ['0%', '60%'],  // 实心圆盘
+                        center: ['50%', '40%'],
+                        avoidLabelOverlap: true,
+                        itemStyle: {
+                            borderRadius: 4,
+                            borderColor: '#fff',
+                            borderWidth: 1
+                        },
+                        label: {
+                            show: false
+                        },
+                        emphasis: {
+                            label: {
+                                show: true,
+                                fontSize: 14,
+                                fontWeight: 'bold'
+                            },
+                            itemStyle: {
+                                shadowBlur: 10,
+                                shadowOffsetX: 0,
+                                shadowColor: 'rgba(0, 0, 0, 0.5)'
+                            }
+                        },
+                        labelLine: {
+                            show: false
+                        },
+                        data: data.map(item => ({
+                            name: item.name,
+                            value: item.value,
+                            species_id: item.species_id,
+                            itemStyle: {
+                                color: item.color
+                            },
+                            percentage: item.percentage
+                        }))
+                    }
+                ]
+            };
+            
+            speciesChart.setOption(option, { notMerge: true });
+            
+            // 添加点击事件 - 跳转到物种分布详情页
+            speciesChart.off('click');
+            speciesChart.on('click', function(params) {
+                // 跳转到物种分布详情页面
+                window.location.href = 'species-distribution.html';
+            });
+            
+            // 添加双击事件 - 跳转到具体物种记录
+            speciesChart.off('dblclick');
+            speciesChart.on('dblclick', function(params) {
+                if (params.data && params.data.species_id) {
+                    const speciesId = params.data.species_id;
+                    window.location.href = `data.html?species_id=${speciesId}`;
+                }
+            });
+        }
+
+        // 加载趋势数据
+        function loadTrendData(days) {
+            currentChartDays = days;
+            fetch(`${API_BASE_URL}/api/stats/trend?days=${days}`)
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        renderTrendChart(data.data);
+                    }
+                })
+                .catch(error => console.error('加载趋势数据失败:', error));
+        }
+
+        // 渲染趋势折线图
+        function renderTrendChart(data) {
+            if (!trendChart || !data) {
+                return;
+            }
+            
+            const option = {
+                tooltip: {
+                    trigger: 'axis',
+                    axisPointer: {
+                        type: 'cross'
+                    }
+                },
+                legend: {
+                    data: ['观测次数', '个体数量'],
+                    bottom: 0
+                },
+                grid: {
+                    left: '3%',
+                    right: '4%',
+                    bottom: '15%',
+                    top: '10%',
+                    containLabel: true
+                },
+                xAxis: {
+                    type: 'category',
+                    boundaryGap: false,
+                    data: data.dates,
+                    axisLabel: {
+                        rotate: 45
+                    }
+                },
+                yAxis: {
+                    type: 'value'
+                },
+                series: [
+                    {
+                        name: '观测次数',
+                        type: 'line',
+                        smooth: true,
+                        data: data.observation_counts,
+                        itemStyle: {
+                            color: '#667eea'
+                        },
+                        areaStyle: {
+                            color: new echarts.graphic.LinearGradient(0, 0, 0, 1, [
+                                { offset: 0, color: 'rgba(102, 126, 234, 0.5)' },
+                                { offset: 1, color: 'rgba(102, 126, 234, 0.1)' }
+                            ])
+                        }
+                    },
+                    {
+                        name: '个体数量',
+                        type: 'line',
+                        smooth: true,
+                        data: data.individual_counts,
+                        itemStyle: {
+                            color: '#27ae60'
+                        }
+                    }
+                ]
+            };
+            
+            trendChart.setOption(option);
+            
+            // 添加点击事件 - 跳转到趋势分析详情页
+            trendChart.off('click');
+            trendChart.on('click', function() {
+                window.location.href = 'trend-analysis.html';
+            });
+        }
+
+        // 加载区域分布数据
+        function loadAreaDistribution() {
+            fetch(`${API_BASE_URL}/api/stats/area-distribution`)
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        renderAreaChart(data.data);
+                    }
+                })
+                .catch(error => console.error('加载区域分布失败:', error));
+        }
+
+        // 区域名称到ID的映射缓存
+        let areaNameToIdMap = {};
+
+        // 渲染区域分布柱状图
+        function renderAreaChart(data) {
+            if (!areaChart || !data || data.length === 0) {
+                return;
+            }
+
+            // 构建区域名称到ID的映射
+            areaNameToIdMap = {};
+            data.forEach(item => {
+                if (item.area_id) {
+                    areaNameToIdMap[item.name] = item.area_id;
+                }
+            });
+
+            const option = {
+                tooltip: {
+                    trigger: 'axis',
+                    axisPointer: {
+                        type: 'shadow'
+                    },
+                    formatter: function(params) {
+                        const item = data[params[0].dataIndex];
+                        return `${item.name}<br/>生境类型: ${item.habitat_type}<br/>观测次数: ${item.count}<br/>个体数量: ${item.individuals}<br/><small class="text-muted">点击查看该区域记录</small>`;
+                    }
+                },
+                grid: {
+                    left: '3%',
+                    right: '4%',
+                    bottom: '3%',
+                    top: '10%',
+                    containLabel: true
+                },
+                xAxis: {
+                    type: 'category',
+                    data: data.map(item => item.name),
+                    axisLabel: {
+                        rotate: 15,
+                        fontSize: 11
+                    }
+                },
+                yAxis: {
+                    type: 'value',
+                    name: '观测次数'
+                },
+                series: [
+                    {
+                        name: '观测次数',
+                        type: 'bar',
+                        data: data.map(item => ({
+                            value: item.count,
+                            name: item.name,
+                            area_id: item.area_id,
+                            itemStyle: {
+                                color: item.color
+                            }
+                        })),
+                        barWidth: '50%',
+                        itemStyle: {
+                            borderRadius: [5, 5, 0, 0]
+                        }
+                    }
+                ]
+            };
+
+            areaChart.setOption(option);
+
+            // 添加点击事件 - 跳转到数据管理页面并筛选该区域
+            areaChart.off('click');
+            areaChart.on('click', function(params) {
+                if (params.data && params.data.area_id) {
+                    const areaId = params.data.area_id;
+                    window.location.href = `data.html?area_id=${areaId}`;
+                } else if (params.name && areaNameToIdMap[params.name]) {
+                    // 备用方案：通过名称查找ID
+                    const areaId = areaNameToIdMap[params.name];
+                    window.location.href = `data.html?area_id=${areaId}`;
+                }
+            });
+        }
+
+        // 页面可见性变化时刷新数据
+        document.addEventListener('visibilitychange', function() {
+            if (!document.hidden) {
+                loadStatistics();
+            }
+        });
+    </script>
+</body>
+</html>

@@ -1,0 +1,790 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>观测趋势分析 - 鸟类数据分析系统</title>
+    
+    <!-- Bootstrap 5 CSS -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <!-- Font Awesome -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- ECharts -->
+    <script src="https://cdn.jsdelivr.net/npm/echarts@5.4.3/dist/echarts.min.js"></script>
+    
+    <style>
+        :root {
+            --primary-color: #2c5aa0;
+            --danger-color: #e74c3c;
+            --warning-color: #f39c12;
+            --success-color: #27ae60;
+        }
+        
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: #f8f9fa;
+        }
+        
+        .navbar-brand {
+            font-weight: bold;
+            color: white !important;
+        }
+        
+        .page-header {
+            background: linear-gradient(135deg, var(--primary-color), #3498db);
+            color: white;
+            padding: 2rem 0;
+            margin-bottom: 2rem;
+        }
+        
+        /* 返回按钮样式 */
+        .back-btn {
+            position: fixed;
+            top: 80px;
+            left: 20px;
+            z-index: 1000;
+            background: white;
+            border: none;
+            border-radius: 50%;
+            width: 45px;
+            height: 45px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.15);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            color: var(--primary-color);
+            font-size: 1.1rem;
+        }
+        
+        .back-btn:hover {
+            transform: translateX(-3px);
+            box-shadow: 0 4px 12px rgba(0,0,0,0.2);
+            background: var(--primary-color);
+            color: white;
+        }
+        
+        .back-btn-tooltip {
+            position: fixed;
+            top: 88px;
+            left: 75px;
+            background: rgba(0,0,0,0.8);
+            color: white;
+            padding: 5px 12px;
+            border-radius: 4px;
+            font-size: 0.85rem;
+            opacity: 0;
+            visibility: hidden;
+            transition: all 0.3s ease;
+            white-space: nowrap;
+            z-index: 1001;
+        }
+        
+        .back-btn:hover + .back-btn-tooltip,
+        .back-btn-tooltip:hover {
+            opacity: 1;
+            visibility: visible;
+        }
+        
+        .chart-card {
+            background: white;
+            border-radius: 10px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+            padding: 20px;
+            margin-bottom: 20px;
+        }
+        
+        #trend-chart {
+            height: 450px;
+        }
+        
+        .time-filter {
+            display: flex;
+            gap: 8px;
+            flex-wrap: wrap;
+        }
+        
+        .time-filter .btn {
+            border-radius: 20px;
+            padding: 6px 16px;
+            font-size: 0.9rem;
+        }
+        
+        .stats-card {
+            background: linear-gradient(145deg, #ffffff, #f0f4f8);
+            border-radius: 10px;
+            padding: 20px;
+            text-align: center;
+            margin-bottom: 15px;
+            transition: transform 0.3s ease;
+        }
+        
+        .stats-card:hover {
+            transform: translateY(-3px);
+        }
+        
+        .stats-value {
+            font-size: 1.8rem;
+            font-weight: bold;
+            color: var(--primary-color);
+        }
+        
+        .stats-label {
+            font-size: 0.85rem;
+            color: #6c757d;
+            margin-top: 5px;
+        }
+        
+        .stats-trend {
+            font-size: 0.8rem;
+            margin-top: 5px;
+        }
+        
+        .trend-up { color: var(--success-color); }
+        .trend-down { color: var(--danger-color); }
+        
+        .data-table {
+            background: white;
+            border-radius: 10px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+            overflow: hidden;
+        }
+        
+        .data-table .table {
+            margin-bottom: 0;
+        }
+        
+        .data-table th {
+            background-color: #f8f9fa;
+            font-weight: 600;
+        }
+        
+        .analysis-card {
+            background: white;
+            border-radius: 10px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+            padding: 20px;
+            margin-bottom: 20px;
+        }
+        
+        .analysis-item {
+            padding: 12px 0;
+            border-bottom: 1px solid #e9ecef;
+        }
+        
+        .analysis-item:last-child {
+            border-bottom: none;
+        }
+        
+        .analysis-icon {
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin-right: 15px;
+        }
+        
+        .icon-primary { background-color: #e3f2fd; color: var(--primary-color); }
+        .icon-success { background-color: #e8f5e9; color: var(--success-color); }
+        .icon-warning { background-color: #fff3e0; color: var(--warning-color); }
+        .icon-danger { background-color: #ffebee; color: var(--danger-color); }
+        
+        .seasonal-chart {
+            height: 300px;
+        }
+        
+        .export-btn {
+            position: fixed;
+            bottom: 30px;
+            right: 30px;
+            z-index: 1000;
+            border-radius: 50%;
+            width: 60px;
+            height: 60px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.2);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.5rem;
+        }
+        
+        .footer {
+            background-color: #343a40;
+            color: white;
+            text-align: center;
+            padding: 20px;
+            margin-top: 40px;
+        }
+        
+        .loading {
+            text-align: center;
+            padding: 50px;
+        }
+    </style>
+</head>
+<body>
+    <!-- 导航栏 -->
+    <nav class="navbar navbar-expand-lg navbar-dark bg-primary">
+        <div class="container">
+            <a class="navbar-brand" href="/">
+                <i class="fas fa-dove"></i> 鸟类数据分析系统 V1.0
+            </a>
+            <div class="navbar-nav ms-auto">
+                <a class="nav-link" href="/">仪表盘</a>
+                <a class="nav-link" href="/data.html">数据管理</a>
+            </div>
+        </div>
+    </nav>
+
+    <!-- 返回按钮 -->
+    <button class="back-btn" onclick="window.location.href='/'" title="返回仪表盘">
+        <i class="fas fa-arrow-left"></i>
+    </button>
+    <div class="back-btn-tooltip">返回仪表盘</div>
+
+    <!-- 数据导出按钮 -->
+    <button class="btn btn-primary export-btn" onclick="exportData()" title="导出CSV数据">
+        <i class="fas fa-download"></i>
+    </button>
+
+    <!-- 页面头部 -->
+    <div class="page-header">
+        <div class="container">
+            <div class="d-flex justify-content-between align-items-center">
+                <div>
+                    <h1><i class="fas fa-chart-line"></i> 观测趋势分析</h1>
+                    <p class="mb-0">详细的观测数据趋势分析与统计</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="container">
+        <!-- 时间范围选择 -->
+        <div class="chart-card mb-4">
+            <div class="d-flex justify-content-between align-items-center flex-wrap">
+                <h5 class="mb-0"><i class="fas fa-calendar-alt"></i> 时间范围选择</h5>
+                <div class="time-filter mt-2 mt-md-0">
+                    <button class="btn btn-outline-primary" data-days="1">1天</button>
+                    <button class="btn btn-outline-primary" data-days="7">7天</button>
+                    <button class="btn btn-outline-primary active" data-days="14">14天</button>
+                    <button class="btn btn-outline-primary" data-days="30">30天</button>
+                    <button class="btn btn-outline-primary" data-days="90">90天</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- 统计指标卡片 -->
+        <div class="row mb-4">
+            <div class="col-md-3 col-sm-6">
+                <div class="stats-card">
+                    <div class="stats-value" id="total-observations">-</div>
+                    <div class="stats-label">总观测次数</div>
+                    <div class="stats-trend" id="observations-trend">-</div>
+                </div>
+            </div>
+            <div class="col-md-3 col-sm-6">
+                <div class="stats-card">
+                    <div class="stats-value" id="total-individuals">-</div>
+                    <div class="stats-label">总个体数量</div>
+                    <div class="stats-trend" id="individuals-trend">-</div>
+                </div>
+            </div>
+            <div class="col-md-3 col-sm-6">
+                <div class="stats-card">
+                    <div class="stats-value text-success" id="avg-daily">-</div>
+                    <div class="stats-label">日均观测</div>
+                    <div class="stats-trend">平均值</div>
+                </div>
+            </div>
+            <div class="col-md-3 col-sm-6">
+                <div class="stats-card">
+                    <div class="stats-value text-warning" id="peak-value">-</div>
+                    <div class="stats-label">峰值观测</div>
+                    <div class="stats-trend" id="peak-date">-</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 趋势图表 -->
+        <div class="chart-card mb-4">
+            <h5 class="mb-3"><i class="fas fa-chart-area"></i> 观测趋势图（双Y轴）</h5>
+            <div id="trend-chart"></div>
+        </div>
+
+        <div class="row">
+            <!-- 趋势分析 -->
+            <div class="col-lg-6">
+                <div class="analysis-card">
+                    <h5 class="mb-3"><i class="fas fa-analytics"></i> 趋势分析</h5>
+                    <div id="trend-analysis">
+                        <div class="analysis-item d-flex align-items-center">
+                            <div class="analysis-icon icon-primary">
+                                <i class="fas fa-chart-line"></i>
+                            </div>
+                            <div>
+                                <div class="fw-bold">整体趋势</div>
+                                <small class="text-muted" id="overall-trend">分析中...</small>
+                            </div>
+                        </div>
+                        <div class="analysis-item d-flex align-items-center">
+                            <div class="analysis-icon icon-success">
+                                <i class="fas fa-arrow-up"></i>
+                            </div>
+                            <div>
+                                <div class="fw-bold">峰值时间</div>
+                                <small class="text-muted" id="peak-time">分析中...</small>
+                            </div>
+                        </div>
+                        <div class="analysis-item d-flex align-items-center">
+                            <div class="analysis-icon icon-danger">
+                                <i class="fas fa-arrow-down"></i>
+                            </div>
+                            <div>
+                                <div class="fw-bold">谷值时间</div>
+                                <small class="text-muted" id="valley-time">分析中...</small>
+                            </div>
+                        </div>
+                        <div class="analysis-item d-flex align-items-center">
+                            <div class="analysis-icon icon-warning">
+                                <i class="fas fa-percentage"></i>
+                            </div>
+                            <div>
+                                <div class="fw-bold">增长率</div>
+                                <small class="text-muted" id="growth-rate">分析中...</small>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- 季节性分析 -->
+            <div class="col-lg-6">
+                <div class="analysis-card">
+                    <h5 class="mb-3"><i class="fas fa-sun"></i> 周期性分析</h5>
+                    <div id="seasonal-chart" class="seasonal-chart"></div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 数据表格 -->
+        <div class="data-table mt-4">
+            <div class="p-3 bg-light border-bottom">
+                <h5 class="mb-0"><i class="fas fa-table"></i> 每日观测数据明细</h5>
+            </div>
+            <div class="table-responsive">
+                <table class="table table-hover table-striped">
+                    <thead>
+                        <tr>
+                            <th>日期</th>
+                            <th>观测次数</th>
+                            <th>个体数量</th>
+                            <th>环比变化</th>
+                            <th>状态</th>
+                        </tr>
+                    </thead>
+                    <tbody id="data-table-body">
+                        <tr>
+                            <td colspan="5" class="loading">
+                                <div class="spinner-border text-primary" role="status"></div>
+                                <p class="mt-2">正在加载数据...</p>
+                            </td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <!-- 页脚 -->
+    <footer class="footer">
+        <div class="container">
+            <p class="mb-0">©2025 | 本系统基于MySQL+Flask开发</p>
+        </div>
+    </footer>
+
+    <!-- Toast 容器 -->
+    <div class="toast-container position-fixed bottom-0 end-0 p-3">
+        <div id="toast" class="toast" role="alert">
+            <div class="toast-header">
+                <strong class="me-auto">系统提示</strong>
+                <button type="button" class="btn-close" data-bs-dismiss="toast"></button>
+            </div>
+            <div class="toast-body" id="toast-message"></div>
+        </div>
+    </div>
+
+    <!-- JavaScript Libraries -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    
+    <script>
+        // 全局变量
+        let currentDays = 14;
+        let trendChart = null;
+        let seasonalChart = null;
+        let currentData = null;
+        
+        // API 基础 URL
+        const API_BASE_URL = 'http://localhost:5000';
+
+        // 初始化应用
+        document.addEventListener('DOMContentLoaded', function() {
+            initCharts();
+            loadTrendData();
+            setupEventListeners();
+        });
+
+        // 初始化图表
+        function initCharts() {
+            trendChart = echarts.init(document.getElementById('trend-chart'));
+            seasonalChart = echarts.init(document.getElementById('seasonal-chart'));
+            
+            window.addEventListener('resize', function() {
+                trendChart.resize();
+                seasonalChart.resize();
+            });
+        }
+
+        // 加载趋势数据
+        function loadTrendData() {
+            fetch(`${API_BASE_URL}/api/stats/trend?days=${currentDays}`)
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        currentData = data.data;
+                        renderTrendChart(data.data);
+                        updateStats(data.data);
+                        renderDataTable(data.data);
+                        analyzeTrend(data.data);
+                        renderSeasonalChart(data.data);
+                    }
+                })
+                .catch(error => {
+                    console.error('Error loading trend data:', error);
+                    showToast('加载数据失败', 'error');
+                });
+        }
+
+        // 渲染趋势图表（双Y轴）
+        function renderTrendChart(data) {
+            const option = {
+                tooltip: {
+                    trigger: 'axis',
+                    axisPointer: {
+                        type: 'cross'
+                    }
+                },
+                legend: {
+                    data: ['观测次数', '个体数量'],
+                    top: 10
+                },
+                grid: {
+                    left: '3%',
+                    right: '4%',
+                    bottom: '15%',
+                    top: '15%',
+                    containLabel: true
+                },
+                xAxis: {
+                    type: 'category',
+                    boundaryGap: false,
+                    data: data.dates,
+                    axisLabel: {
+                        rotate: 45,
+                        fontSize: 11
+                    }
+                },
+                yAxis: [
+                    {
+                        type: 'value',
+                        name: '观测次数',
+                        position: 'left',
+                        axisLine: {
+                            show: true,
+                            lineStyle: { color: '#667eea' }
+                        },
+                        axisLabel: { color: '#667eea' }
+                    },
+                    {
+                        type: 'value',
+                        name: '个体数量',
+                        position: 'right',
+                        axisLine: {
+                            show: true,
+                            lineStyle: { color: '#27ae60' }
+                        },
+                        axisLabel: { color: '#27ae60' }
+                    }
+                ],
+                series: [
+                    {
+                        name: '观测次数',
+                        type: 'line',
+                        smooth: true,
+                        yAxisIndex: 0,
+                        data: data.observation_counts,
+                        itemStyle: { color: '#667eea' },
+                        areaStyle: {
+                            color: new echarts.graphic.LinearGradient(0, 0, 0, 1, [
+                                { offset: 0, color: 'rgba(102, 126, 234, 0.5)' },
+                                { offset: 1, color: 'rgba(102, 126, 234, 0.1)' }
+                            ])
+                        }
+                    },
+                    {
+                        name: '个体数量',
+                        type: 'line',
+                        smooth: true,
+                        yAxisIndex: 1,
+                        data: data.individual_counts,
+                        itemStyle: { color: '#27ae60' },
+                        lineStyle: { type: 'dashed' }
+                    }
+                ]
+            };
+            
+            trendChart.setOption(option, true);
+        }
+
+        // 更新统计指标
+        function updateStats(data) {
+            const totalObs = data.observation_counts.reduce((a, b) => a + b, 0);
+            const totalInd = data.individual_counts.reduce((a, b) => a + b, 0);
+            const avgDaily = (totalObs / data.dates.length).toFixed(1);
+            
+            // 找出峰值
+            const maxObs = Math.max(...data.observation_counts);
+            const peakIndex = data.observation_counts.indexOf(maxObs);
+            const peakDate = data.dates[peakIndex];
+            
+            document.getElementById('total-observations').textContent = totalObs;
+            document.getElementById('total-individuals').textContent = totalInd;
+            document.getElementById('avg-daily').textContent = avgDaily;
+            document.getElementById('peak-value').textContent = maxObs;
+            document.getElementById('peak-date').textContent = peakDate;
+            
+            // 计算趋势（前一半vs后一半）
+            const half = Math.floor(data.observation_counts.length / 2);
+            const firstHalf = data.observation_counts.slice(0, half).reduce((a, b) => a + b, 0);
+            const secondHalf = data.observation_counts.slice(half).reduce((a, b) => a + b, 0);
+            const trend = firstHalf > 0 ? ((secondHalf - firstHalf) / firstHalf * 100).toFixed(1) : 0;
+            
+            const trendEl = document.getElementById('observations-trend');
+            trendEl.innerHTML = trend >= 0 
+                ? `<span class="trend-up"><i class="fas fa-arrow-up"></i> +${trend}%</span>`
+                : `<span class="trend-down"><i class="fas fa-arrow-down"></i> ${trend}%</span>`;
+        }
+
+        // 渲染数据表格
+        function renderDataTable(data) {
+            const tbody = document.getElementById('data-table-body');
+            
+            tbody.innerHTML = data.dates.map((date, index) => {
+                const obsCount = data.observation_counts[index];
+                const indCount = data.individual_counts[index];
+                
+                // 计算环比
+                let changePercent = 0;
+                let changeIcon = '-';
+                let changeClass = 'text-muted';
+                
+                if (index > 0) {
+                    const prevCount = data.observation_counts[index - 1];
+                    if (prevCount > 0) {
+                        changePercent = ((obsCount - prevCount) / prevCount * 100).toFixed(1);
+                        if (changePercent > 0) {
+                            changeIcon = `<i class="fas fa-arrow-up"></i> +${changePercent}%`;
+                            changeClass = 'text-success';
+                        } else if (changePercent < 0) {
+                            changeIcon = `<i class="fas fa-arrow-down"></i> ${changePercent}%`;
+                            changeClass = 'text-danger';
+                        } else {
+                            changeIcon = '<i class="fas fa-minus"></i> 0%';
+                        }
+                    }
+                }
+                
+                // 状态判断
+                let statusBadge = '';
+                if (obsCount >= 10) {
+                    statusBadge = '<span class="badge bg-success">活跃</span>';
+                } else if (obsCount >= 5) {
+                    statusBadge = '<span class="badge bg-primary">正常</span>';
+                } else if (obsCount > 0) {
+                    statusBadge = '<span class="badge bg-warning text-dark">较少</span>';
+                } else {
+                    statusBadge = '<span class="badge bg-secondary">无数据</span>';
+                }
+                
+                return `
+                    <tr>
+                        <td>${date}</td>
+                        <td>${obsCount}</td>
+                        <td>${indCount}</td>
+                        <td class="${changeClass}">${changeIcon}</td>
+                        <td>${statusBadge}</td>
+                    </tr>
+                `;
+            }).reverse().join('');
+        }
+
+        // 趋势分析
+        function analyzeTrend(data) {
+            const obsCounts = data.observation_counts;
+            
+            // 整体趋势
+            const firstWeek = obsCounts.slice(0, 7).reduce((a, b) => a + b, 0);
+            const lastWeek = obsCounts.slice(-7).reduce((a, b) => a + b, 0);
+            let trendText = '';
+            if (lastWeek > firstWeek * 1.2) {
+                trendText = '观测活动呈上升趋势，鸟类活动频繁';
+            } else if (lastWeek < firstWeek * 0.8) {
+                trendText = '观测活动呈下降趋势，可能受季节因素影响';
+            } else {
+                trendText = '观测活动保持稳定，数据收集正常';
+            }
+            document.getElementById('overall-trend').textContent = trendText;
+            
+            // 峰值和谷值
+            const maxVal = Math.max(...obsCounts);
+            const minVal = Math.min(...obsCounts.filter(v => v > 0)) || 0;
+            const maxIndex = obsCounts.indexOf(maxVal);
+            const minIndex = obsCounts.indexOf(minVal);
+            
+            document.getElementById('peak-time').textContent = 
+                `${data.dates[maxIndex]} (${maxVal}次观测)`;
+            document.getElementById('valley-time').textContent = 
+                minVal > 0 ? `${data.dates[minIndex]} (${minVal}次观测)` : '暂无数据';
+            
+            // 增长率
+            const growth = firstWeek > 0 
+                ? ((lastWeek - firstWeek) / firstWeek * 100).toFixed(1)
+                : 0;
+            document.getElementById('growth-rate').textContent = 
+                growth >= 0 ? `+${growth}% (增长)` : `${growth}% (下降)`;
+        }
+
+        // 渲染周期性分析图表
+        function renderSeasonalChart(data) {
+            // 按星期几分组
+            const dayOfWeekData = [0, 0, 0, 0, 0, 0, 0]; // 周日到周六
+            data.dates.forEach((date, index) => {
+                const day = new Date(date).getDay();
+                dayOfWeekData[day] += data.observation_counts[index];
+            });
+            
+            const weekDays = ['周日', '周一', '周二', '周三', '周四', '周五', '周六'];
+            
+            const option = {
+                tooltip: {
+                    trigger: 'axis'
+                },
+                grid: {
+                    left: '3%',
+                    right: '4%',
+                    bottom: '3%',
+                    top: '10%',
+                    containLabel: true
+                },
+                xAxis: {
+                    type: 'category',
+                    data: weekDays,
+                    axisLabel: { fontSize: 11 }
+                },
+                yAxis: {
+                    type: 'value',
+                    name: '平均观测'
+                },
+                series: [{
+                    name: '平均观测次数',
+                    type: 'bar',
+                    data: dayOfWeekData.map(v => (v / (currentDays / 7)).toFixed(1)),
+                    itemStyle: {
+                        color: new echarts.graphic.LinearGradient(0, 0, 0, 1, [
+                            { offset: 0, color: '#f093fb' },
+                            { offset: 1, color: '#f5576c' }
+                        ])
+                    },
+                    barWidth: '50%'
+                }]
+            };
+            
+            seasonalChart.setOption(option);
+        }
+
+        // 设置事件监听器
+        function setupEventListeners() {
+            // 时间范围选择
+            document.querySelectorAll('.time-filter .btn').forEach(btn => {
+                btn.addEventListener('click', function() {
+                    document.querySelectorAll('.time-filter .btn').forEach(b => {
+                        b.classList.remove('btn-primary', 'active');
+                        b.classList.add('btn-outline-primary');
+                    });
+                    this.classList.remove('btn-outline-primary');
+                    this.classList.add('btn-primary', 'active');
+                    
+                    currentDays = parseInt(this.dataset.days);
+                    loadTrendData();
+                });
+            });
+        }
+
+        // 导出数据
+        function exportData() {
+            if (!currentData) {
+                showToast('暂无数据可导出', 'warning');
+                return;
+            }
+            
+            // 构建CSV内容
+            let csv = '日期,观测次数,个体数量\n';
+            currentData.dates.forEach((date, index) => {
+                csv += `${date},${currentData.observation_counts[index]},${currentData.individual_counts[index]}\n`;
+            });
+            
+            // 添加统计信息
+            csv += '\n统计信息\n';
+            const totalObs = currentData.observation_counts.reduce((a, b) => a + b, 0);
+            const totalInd = currentData.individual_counts.reduce((a, b) => a + b, 0);
+            csv += `总观测次数,${totalObs}\n`;
+            csv += `总个体数量,${totalInd}\n`;
+            csv += `数据时间范围,${currentDays}天\n`;
+            csv += `导出时间,${new Date().toLocaleString('zh-CN')}\n`;
+            
+            // 下载文件
+            const blob = new Blob(['\ufeff' + csv], { type: 'text/csv;charset=utf-8;' });
+            const link = document.createElement('a');
+            link.href = URL.createObjectURL(blob);
+            link.download = `观测趋势数据_${new Date().toISOString().split('T')[0]}.csv`;
+            link.click();
+            
+            showToast('数据导出成功', 'success');
+        }
+
+        // 显示Toast消息
+        function showToast(message, type = 'info') {
+            const toastElement = document.getElementById('toast');
+            const toastBody = document.getElementById('toast-message');
+            
+            toastBody.textContent = message;
+            
+            if (type === 'error') {
+                toastElement.querySelector('.toast-header').className = 'toast-header bg-danger text-white';
+            } else if (type === 'success') {
+                toastElement.querySelector('.toast-header').className = 'toast-header bg-success text-white';
+            } else if (type === 'warning') {
+                toastElement.querySelector('.toast-header').className = 'toast-header bg-warning text-dark';
+            } else {
+                toastElement.querySelector('.toast-header').className = 'toast-header';
+            }
+            
+            const toast = new bootstrap.Toast(toastElement);
+            toast.show();
+        }
+    </script>
+</body>
+</html>

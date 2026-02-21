@@ -1,0 +1,586 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>物种分布详情 - 鸟类数据分析系统</title>
+    
+    <!-- Bootstrap 5 CSS -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <!-- Font Awesome -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- ECharts -->
+    <script src="https://cdn.jsdelivr.net/npm/echarts@5.4.3/dist/echarts.min.js"></script>
+    
+    <style>
+        :root {
+            --primary-color: #2c5aa0;
+            --danger-color: #e74c3c;
+            --warning-color: #f39c12;
+            --success-color: #27ae60;
+        }
+        
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: #f8f9fa;
+        }
+        
+        .navbar-brand {
+            font-weight: bold;
+            color: white !important;
+        }
+        
+        .page-header {
+            background: linear-gradient(135deg, var(--primary-color), #3498db);
+            color: white;
+            padding: 2rem 0;
+            margin-bottom: 2rem;
+        }
+        
+        /* 返回按钮样式 */
+        .back-btn {
+            position: fixed;
+            top: 80px;
+            left: 20px;
+            z-index: 1000;
+            background: white;
+            border: none;
+            border-radius: 50%;
+            width: 45px;
+            height: 45px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.15);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            color: var(--primary-color);
+            font-size: 1.1rem;
+        }
+        
+        .back-btn:hover {
+            transform: translateX(-3px);
+            box-shadow: 0 4px 12px rgba(0,0,0,0.2);
+            background: var(--primary-color);
+            color: white;
+        }
+        
+        .back-btn-tooltip {
+            position: fixed;
+            top: 88px;
+            left: 75px;
+            background: rgba(0,0,0,0.8);
+            color: white;
+            padding: 5px 12px;
+            border-radius: 4px;
+            font-size: 0.85rem;
+            opacity: 0;
+            visibility: hidden;
+            transition: all 0.3s ease;
+            white-space: nowrap;
+            z-index: 1001;
+        }
+        
+        .back-btn:hover + .back-btn-tooltip,
+        .back-btn-tooltip:hover {
+            opacity: 1;
+            visibility: visible;
+        }
+        
+        .chart-container {
+            background: white;
+            border-radius: 10px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+            padding: 20px;
+            margin-bottom: 20px;
+        }
+        
+        #species-chart {
+            height: 600px;
+        }
+        
+        .legend-container {
+            background: white;
+            border-radius: 10px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+            padding: 20px;
+            max-height: 600px;
+            overflow-y: auto;
+        }
+        
+        .legend-item {
+            display: flex;
+            align-items: center;
+            padding: 12px 15px;
+            border-bottom: 1px solid #e9ecef;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            border-radius: 8px;
+            margin-bottom: 5px;
+        }
+        
+        .legend-item:hover {
+            background-color: #f8f9fa;
+            transform: translateX(5px);
+        }
+        
+        .legend-item:last-child {
+            border-bottom: none;
+        }
+        
+        .legend-color {
+            width: 20px;
+            height: 20px;
+            border-radius: 4px;
+            margin-right: 12px;
+            flex-shrink: 0;
+        }
+        
+        .legend-info {
+            flex: 1;
+        }
+        
+        .legend-name {
+            font-weight: 600;
+            color: #212529;
+            font-size: 0.95rem;
+        }
+        
+        .legend-scientific {
+            font-style: italic;
+            color: #6c757d;
+            font-size: 0.85rem;
+        }
+        
+        .legend-stats {
+            text-align: right;
+            margin-right: 10px;
+        }
+        
+        .legend-count {
+            font-weight: bold;
+            color: var(--primary-color);
+        }
+        
+        .legend-percentage {
+            font-size: 0.85rem;
+            color: #6c757d;
+        }
+        
+        .conservation-badge {
+            font-size: 0.75rem;
+            padding: 3px 8px;
+            border-radius: 12px;
+            margin-left: 8px;
+        }
+        
+        .conservation-lc { background-color: #d4edda; color: #155724; }
+        .conservation-nt { background-color: #cce5ff; color: #004085; }
+        .conservation-vu { background-color: #fff3cd; color: #856404; }
+        .conservation-en { background-color: #f8d7da; color: #721c24; }
+        .conservation-cr { background-color: #f5c6cb; color: #721c24; }
+        
+        .endangered-icon {
+            color: var(--danger-color);
+            margin-left: 8px;
+        }
+        
+        .stats-summary {
+            background: linear-gradient(145deg, #ffffff, #f0f4f8);
+            border-radius: 10px;
+            padding: 1.5rem;
+            margin-bottom: 1.5rem;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+        }
+        
+        .stats-item {
+            text-align: center;
+            padding: 0.5rem;
+        }
+        
+        .stats-number {
+            font-size: 1.8rem;
+            font-weight: bold;
+            color: var(--primary-color);
+        }
+        
+        .stats-label {
+            font-size: 0.85rem;
+            color: #6c757d;
+        }
+        
+        .update-time {
+            text-align: right;
+            color: #6c757d;
+            font-size: 0.85rem;
+            margin-top: 10px;
+        }
+        
+        .footer {
+            background-color: #343a40;
+            color: white;
+            text-align: center;
+            padding: 20px;
+            margin-top: 40px;
+        }
+        
+        .loading {
+            text-align: center;
+            padding: 100px;
+        }
+        
+        /* 自定义滚动条 */
+        .legend-container::-webkit-scrollbar {
+            width: 6px;
+        }
+        
+        .legend-container::-webkit-scrollbar-track {
+            background: #f1f1f1;
+            border-radius: 3px;
+        }
+        
+        .legend-container::-webkit-scrollbar-thumb {
+            background: #c1c1c1;
+            border-radius: 3px;
+        }
+        
+        .legend-container::-webkit-scrollbar-thumb:hover {
+            background: #a8a8a8;
+        }
+    </style>
+</head>
+<body>
+    <!-- 导航栏 -->
+    <nav class="navbar navbar-expand-lg navbar-dark bg-primary">
+        <div class="container">
+            <a class="navbar-brand" href="/">
+                <i class="fas fa-dove"></i> 鸟类数据分析系统 V1.0
+            </a>
+            <div class="navbar-nav ms-auto">
+                <a class="nav-link" href="/">仪表盘</a>
+                <a class="nav-link" href="/data.html">数据管理</a>
+            </div>
+        </div>
+    </nav>
+
+    <!-- 返回按钮 -->
+    <button class="back-btn" onclick="window.location.href='/'" title="返回仪表盘">
+        <i class="fas fa-arrow-left"></i>
+    </button>
+    <div class="back-btn-tooltip">返回仪表盘</div>
+
+    <!-- 页面头部 -->
+    <div class="page-header">
+        <div class="container">
+            <div class="d-flex justify-content-between align-items-center">
+                <div>
+                    <h1><i class="fas fa-chart-pie"></i> 物种分布详情</h1>
+                    <p class="mb-0">系统中各物种观测数据的详细分布情况</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="container">
+        <!-- 统计摘要 -->
+        <div class="stats-summary">
+            <div class="row">
+                <div class="col-md-3 col-6">
+                    <div class="stats-item">
+                        <div class="stats-number" id="total-species">-</div>
+                        <div class="stats-label">物种总数</div>
+                    </div>
+                </div>
+                <div class="col-md-3 col-6">
+                    <div class="stats-item">
+                        <div class="stats-number" id="total-observations">-</div>
+                        <div class="stats-label">观测总次数</div>
+                    </div>
+                </div>
+                <div class="col-md-3 col-6">
+                    <div class="stats-item">
+                        <div class="stats-number text-danger" id="endangered-count">-</div>
+                        <div class="stats-label">濒危物种</div>
+                    </div>
+                </div>
+                <div class="col-md-3 col-6">
+                    <div class="stats-item">
+                        <div class="stats-number text-success" id="dominant-species">-</div>
+                        <div class="stats-label">优势物种</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 图表和图例区域 -->
+        <div class="row">
+            <!-- 左侧：物种分布图表 -->
+            <div class="col-lg-8">
+                <div class="chart-container">
+                    <h5 class="mb-3"><i class="fas fa-chart-pie"></i> 物种分布圆盘图</h5>
+                    <div id="species-chart"></div>
+                    <div class="update-time">
+                        <i class="fas fa-clock"></i> 数据更新时间：<span id="update-time">-</span>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- 右侧：图例列表 -->
+            <div class="col-lg-4">
+                <div class="legend-container">
+                    <h5 class="mb-3"><i class="fas fa-list"></i> 物种列表</h5>
+                    <div id="legend-list">
+                        <div class="loading">
+                            <div class="spinner-border text-primary" role="status"></div>
+                            <p class="mt-2">正在加载数据...</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 页脚 -->
+    <footer class="footer">
+        <div class="container">
+            <p class="mb-0">©2025 | 本系统基于MySQL+Flask开发</p>
+        </div>
+    </footer>
+
+    <!-- Toast 容器 -->
+    <div class="toast-container position-fixed bottom-0 end-0 p-3">
+        <div id="toast" class="toast" role="alert">
+            <div class="toast-header">
+                <strong class="me-auto">系统提示</strong>
+                <button type="button" class="btn-close" data-bs-dismiss="toast"></button>
+            </div>
+            <div class="toast-body" id="toast-message"></div>
+        </div>
+    </div>
+
+    <!-- JavaScript Libraries -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    
+    <script>
+        // 全局变量
+        let speciesChart = null;
+        let speciesData = [];
+        
+        // API 基础 URL
+        const API_BASE_URL = 'http://localhost:5000';
+
+        // 保护状态映射
+        const conservationMap = {
+            'LC': { text: '无危', class: 'conservation-lc', level: 1 },
+            'NT': { text: '近危', class: 'conservation-nt', level: 2 },
+            'VU': { text: '易危', class: 'conservation-vu', level: 3 },
+            'EN': { text: '濒危', class: 'conservation-en', level: 4 },
+            'CR': { text: '极危', class: 'conservation-cr', level: 5 }
+        };
+
+        // 初始化应用
+        document.addEventListener('DOMContentLoaded', function() {
+            initChart();
+            loadSpeciesDistribution();
+        });
+
+        // 初始化图表
+        function initChart() {
+            speciesChart = echarts.init(document.getElementById('species-chart'));
+            
+            window.addEventListener('resize', function() {
+                speciesChart.resize();
+            });
+        }
+
+        // 加载物种分布数据
+        function loadSpeciesDistribution() {
+            Promise.all([
+                fetch(`${API_BASE_URL}/api/stats/species-distribution`).then(r => r.json()),
+                fetch(`${API_BASE_URL}/api/species`).then(r => r.json())
+            ])
+            .then(([distributionData, speciesInfoData]) => {
+                if (distributionData.success && speciesInfoData.success) {
+                    // 合并数据
+                    const speciesMap = {};
+                    speciesInfoData.data.forEach(s => {
+                        speciesMap[s.id] = s;
+                    });
+                    
+                    // 更新全局变量
+                    speciesData = distributionData.data.map(item => ({
+                        ...item,
+                        scientific_name: speciesMap[item.species_id]?.scientific_name || '-',
+                        conservation_status: speciesMap[item.species_id]?.conservation_status || 'LC',
+                        is_endangered: ['EN', 'CR', 'VU'].includes(speciesMap[item.species_id]?.conservation_status)
+                    }));
+                    
+                    // 更新统计
+                    updateStats();
+                    
+                    // 渲染图表
+                    renderChart();
+                    
+                    // 渲染图例
+                    renderLegend();
+                    
+                    // 更新时间
+                    document.getElementById('update-time').textContent = new Date().toLocaleString('zh-CN');
+                }
+            })
+            .catch(error => {
+                console.error('Error loading species distribution:', error);
+                showToast('加载数据失败', 'error');
+            });
+        }
+
+        // 更新统计
+        function updateStats() {
+            const totalSpecies = speciesData.length;
+            const totalObservations = speciesData.reduce((sum, s) => sum + s.value, 0);
+            const endangeredCount = speciesData.filter(s => ['EN', 'CR'].includes(s.conservation_status)).length;
+            const dominantSpecies = speciesData.length > 0 ? speciesData[0].name : '-';
+            
+            document.getElementById('total-species').textContent = totalSpecies;
+            document.getElementById('total-observations').textContent = totalObservations;
+            document.getElementById('endangered-count').textContent = endangeredCount;
+            document.getElementById('dominant-species').textContent = dominantSpecies;
+        }
+
+        // 渲染图表
+        function renderChart() {
+            const option = {
+                tooltip: {
+                    trigger: 'item',
+                    formatter: function(params) {
+                        const data = params.data;
+                        const consInfo = conservationMap[data.conservation_status] || { text: data.conservation_status };
+                        const endangeredIcon = data.is_endangered ? ' <i class="fas fa-exclamation-triangle" style="color:#e74c3c"></i>' : '';
+                        return `
+                            <div style="padding:10px;">
+                                <strong>${data.name}</strong>${endangeredIcon}<br/>
+                                <span style="font-style:italic;color:#666">${data.scientific_name}</span><br/>
+                                观测次数: <strong>${data.value}</strong><br/>
+                                占比: <strong>${data.percentage}%</strong><br/>
+                                保护状态: <span style="color:${data.is_endangered ? '#e74c3c' : '#27ae60'}">${consInfo.text}</span>
+                            </div>
+                        `;
+                    }
+                },
+                series: [
+                    {
+                        name: '物种分布',
+                        type: 'pie',
+                        radius: ['0%', '75%'],
+                        center: ['50%', '50%'],
+                        avoidLabelOverlap: true,
+                        itemStyle: {
+                            borderRadius: 6,
+                            borderColor: '#fff',
+                            borderWidth: 2
+                        },
+                        label: {
+                            show: true,
+                            formatter: function(params) {
+                                return params.data.percentage >= 5 ? params.data.name : '';
+                            },
+                            fontSize: 12
+                        },
+                        labelLine: {
+                            show: true,
+                            length: 15,
+                            length2: 10
+                        },
+                        emphasis: {
+                            label: {
+                                show: true,
+                                fontSize: 14,
+                                fontWeight: 'bold'
+                            },
+                            itemStyle: {
+                                shadowBlur: 10,
+                                shadowOffsetX: 0,
+                                shadowColor: 'rgba(0, 0, 0, 0.5)'
+                            }
+                        },
+                        data: speciesData.map(item => ({
+                            name: item.name,
+                            value: item.value,
+                            species_id: item.species_id,
+                            scientific_name: item.scientific_name,
+                            conservation_status: item.conservation_status,
+                            is_endangered: item.is_endangered,
+                            percentage: item.percentage,
+                            itemStyle: {
+                                color: item.color
+                            }
+                        }))
+                    }
+                ]
+            };
+            
+            speciesChart.setOption(option);
+            
+            // 点击事件
+            speciesChart.on('click', function(params) {
+                if (params.data && params.data.species_id) {
+                    window.location.href = `data.html?species_id=${params.data.species_id}`;
+                }
+            });
+        }
+
+        // 渲染图例
+        function renderLegend() {
+            const container = document.getElementById('legend-list');
+            
+            container.innerHTML = speciesData.map((species, index) => {
+                const consInfo = conservationMap[species.conservation_status] || { text: species.conservation_status, class: '' };
+                const endangeredIcon = species.is_endangered ? '<i class="fas fa-exclamation-triangle endangered-icon" title="濒危物种"></i>' : '';
+                
+                return `
+                    <div class="legend-item" onclick="goToSpeciesRecords(${species.species_id})" title="查看 ${species.name} 的观测记录">
+                        <div class="legend-color" style="background-color: ${species.color}"></div>
+                        <div class="legend-info">
+                            <div class="legend-name">
+                                ${index + 1}. ${species.name}
+                                ${endangeredIcon}
+                                <span class="conservation-badge ${consInfo.class}">${consInfo.text}</span>
+                            </div>
+                            <div class="legend-scientific">${species.scientific_name}</div>
+                        </div>
+                        <div class="legend-stats">
+                            <div class="legend-count">${species.value}次</div>
+                            <div class="legend-percentage">${species.percentage}%</div>
+                        </div>
+                        <i class="fas fa-chevron-right text-muted"></i>
+                    </div>
+                `;
+            }).join('');
+        }
+
+        // 跳转到物种观测记录
+        function goToSpeciesRecords(speciesId) {
+            window.location.href = `data.html?species_id=${speciesId}`;
+        }
+
+        // 显示Toast消息
+        function showToast(message, type = 'info') {
+            const toastElement = document.getElementById('toast');
+            const toastBody = document.getElementById('toast-message');
+            
+            toastBody.textContent = message;
+            
+            if (type === 'error') {
+                toastElement.querySelector('.toast-header').className = 'toast-header bg-danger text-white';
+            } else if (type === 'success') {
+                toastElement.querySelector('.toast-header').className = 'toast-header bg-success text-white';
+            } else {
+                toastElement.querySelector('.toast-header').className = 'toast-header';
+            }
+            
+            const toast = new bootstrap.Toast(toastElement);
+            toast.show();
+        }
+    </script>
+</body>
+</html>

@@ -62,11 +62,11 @@ backend/logs/
 # 上传的媒体文件
 # ========================================
 # 用户上传的图片和音频（保留目录结构但忽略文件）
-data/images/*.jpg
-data/images/*.jpeg
-data/images/*.png
-data/audios/*.mp3
-data/audios/*.wav
+# data/images/*.jpg
+# data/images/*.jpeg
+# data/images/*.png
+# data/audios/*.mp3
+# data/audios/*.wav
 
 # ========================================
 # IDE和编辑器

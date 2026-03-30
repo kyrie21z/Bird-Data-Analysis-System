@@ -174,6 +174,168 @@ def get_heatmap_data():
         }), 500
 
 
+@bp.route('/report/generate', methods=['POST'])
+def generate_report():
+    """
+    生成监测报告
+    
+    请求参数：
+        days: 时间范围（1/7/30，默认7）
+        format: 报告格式（pdf/word，默认pdf）
+    
+    返回：
+        PDF文件下载
+    """
+    try:
+        from app.utils.report_generator import generate_monitoring_report
+        
+        # 获取参数
+        data = request.get_json() or {}
+        days = data.get('days', 7)
+        report_format = data.get('format', 'pdf')
+        
+        # 参数验证
+        if days not in [1, 7, 30, 90]:
+            days = 7
+        
+        # 计算日期范围
+        end_date = datetime.utcnow()
+        start_date = end_date - timedelta(days=days)
+        date_range = f"{start_date.strftime('%Y年%m月%d日')} - {end_date.strftime('%Y年%m月%d日')}"
+        
+        # 获取统计数据
+        # 1. 总观测数
+        total_observations = Observation.query.filter(
+            Observation.status == 'confirmed',
+            Observation.observed_at >= start_date
+        ).count()
+        
+        # 2. 物种统计
+        species_stats = db.session.query(
+            Observation.species_id,
+            func.count(Observation.id).label('obs_count'),
+            func.sum(Observation.count).label('total_count')
+        ).filter(
+            Observation.status == 'confirmed',
+            Observation.observed_at >= start_date
+        ).group_by(Observation.species_id).all()
+        
+        total_species = len(species_stats)
+        total_individuals = sum(s.total_count or 0 for s in species_stats)
+        
+        # 3. Top10物种
+        top_species_ids = [s.species_id for s in sorted(species_stats, key=lambda x: x.obs_count, reverse=True)[:10]]
+        top_species = []
+        for species_id in top_species_ids:
+            species = BirdSpecies.query.get(species_id)
+            if species:
+                stat = next((s for s in species_stats if s.species_id == species_id), None)
+                top_species.append({
+                    'chinese_name': species.chinese_name,
+                    'scientific_name': species.scientific_name,
+                    'observation_count': stat.obs_count if stat else 0,
+                    'conservation_status': species.conservation_status
+                })
+        
+        # 4. 濒危物种统计
+        endangered_obs = Observation.query.join(
+            BirdSpecies, Observation.species_id == BirdSpecies.id
+        ).filter(
+            Observation.status == 'confirmed',
+            Observation.observed_at >= start_date,
+            BirdSpecies.conservation_status.in_(['EN', 'CR', 'VU'])
+        ).all()
+        
+        endangered_species_dict = {}
+        for obs in endangered_obs:
+            species = obs.species
+            if species.id not in endangered_species_dict:
+                endangered_species_dict[species.id] = {
+                    'chinese_name': species.chinese_name,
+                    'scientific_name': species.scientific_name,
+                    'conservation_status': species.conservation_status,
+                    'description': species.typical_habitat or '暂无描述',
+                    'observation_count': 0,
+                    'total_count': 0
+                }
+            endangered_species_dict[species.id]['observation_count'] += 1
+            endangered_species_dict[species.id]['total_count'] += obs.count
+        
+        endangered_species = list(endangered_species_dict.values())
+        endangered_count = len(endangered_species)
+        
+        # 5. 设备统计
+        device_stats = db.session.query(
+            Device,
+            func.count(Observation.id).label('obs_count'),
+            func.count(func.distinct(Observation.species_id)).label('species_count')
+        ).outerjoin(
+            Observation, (Device.id == Observation.device_id) & 
+            (Observation.observed_at >= start_date) &
+            (Observation.status == 'confirmed')
+        ).group_by(Device.id).all()
+        
+        device_stats_list = [{
+            'serial_number': d.Device.serial_number,
+            'area_name': d.Device.area.name if d.Device.area else '-',
+            'observation_count': d.obs_count or 0,
+            'species_count': d.species_count or 0
+        } for d in device_stats]
+        
+        # 6. 平均置信度
+        avg_confidence = db.session.query(
+            func.avg(Observation.confidence)
+        ).filter(
+            Observation.status == 'confirmed',
+            Observation.observed_at >= start_date
+        ).scalar() or 0
+        
+        # 组装报告数据
+        report_data = {
+            'report_id': datetime.now().strftime('%Y%m%d%H%M%S'),
+            'area_name': '西溪湿地',
+            'date_range': date_range,
+            'total_observations': total_observations,
+            'total_species': total_species,
+            'total_individuals': total_individuals,
+            'endangered_count': endangered_count,
+            'endangered_percentage': round(endangered_count / total_species * 100, 1) if total_species > 0 else 0,
+            'device_count': len(device_stats),
+            'completeness_rate': 98.5,  # 模拟数据完整率
+            'avg_confidence': round(avg_confidence * 100, 1),
+            'top_species': top_species,
+            'endangered_species': endangered_species,
+            'device_stats': device_stats_list
+        }
+        
+        # 生成PDF
+        if report_format == 'pdf':
+            pdf_bytes = generate_monitoring_report(report_data)
+            
+            from flask import send_file
+            import io
+            
+            return send_file(
+                io.BytesIO(pdf_bytes),
+                mimetype='application/pdf',
+                as_attachment=True,
+                download_name=f"鸟类监测报告_{datetime.now().strftime('%Y%m%d')}.pdf"
+            )
+        else:
+            return jsonify({
+                'success': False,
+                'error': '不支持的报告格式'
+            }), 400
+            
+    except Exception as e:
+        current_app.logger.error(f"生成报告失败: {str(e)}")
+        return jsonify({
+            'success': False,
+            'error': '生成报告失败',
+            'message': str(e)
+        }), 500
+
+
 @bp.route('/observations')
 def get_observations():
     """
@@ -185,6 +347,7 @@ def get_observations():
         species_id: 物种ID筛选（可选）
         area_id: 区域ID筛选（可选）
         endangered: 只显示濒危物种（可选，true/false）
+        days: 时间范围（可选，1/7/30/90）
     """
     try:
         # 获取分页参数
@@ -194,6 +357,7 @@ def get_observations():
         species_id = request.args.get('species_id', type=int, default=None)
         area_id = request.args.get('area_id', type=int, default=None)
         endangered = request.args.get('endangered', type=str, default=None)
+        days = request.args.get('days', type=int, default=None)
 
         # 参数验证
         if limit > current_app.config['MAX_PAGE_SIZE']:
@@ -203,6 +367,11 @@ def get_observations():
         query = Observation.query.filter(
             Observation.status == 'confirmed'
         )
+        
+        # 时间范围筛选
+        if days:
+            start_date = datetime.utcnow() - timedelta(days=days)
+            query = query.filter(Observation.observed_at >= start_date)
 
         # 如果有device_id筛选条件
         if device_id:

@@ -220,35 +220,38 @@ class Observation(db.Model):
     @staticmethod
     def get_heatmap_data(days=7, min_confidence=0.7):
         """
-        获取热力图数据 - 优化版本
+        获取热力图数据 - 按设备分组
         
-        性能优化：
-        1. 使用子查询避免多次查询
-        2. 直接使用复合索引加速时间范围查询
-        3. 一次性聚合减少数据传输
+        按设备ID分组统计观测数据，用于设备中心热力图
         
         Returns:
-            [{'lat': float, 'lng': float, 'count': int}, ...]
+            [{'device_id': int, 'lat': float, 'lng': float, 'count': int}, ...]
         """
         from datetime import datetime, timedelta
         
         threshold_date = datetime.utcnow() - timedelta(days=days)
         
-        # 优化查询：直接使用复合条件聚合，避免子查询
+        # 按设备ID分组统计观测数据
         heatmap_data = db.session.query(
-            Observation.latitude,
-            Observation.longitude,
+            Observation.device_id,
+            Device.latitude,
+            Device.longitude,
             func.count(Observation.id).label('count')
+        ).join(
+            Device, Observation.device_id == Device.id
         ).filter(
             Observation.observed_at >= threshold_date,
             Observation.confidence >= min_confidence,
             Observation.status == 'confirmed'
         ).group_by(
-            Observation.latitude, Observation.longitude
+            Observation.device_id,
+            Device.latitude,
+            Device.longitude
         ).all()
         
         return [
             {
+                'device_id': item.device_id,
                 'lat': float(item.latitude),
                 'lng': float(item.longitude),
                 'count': item.count

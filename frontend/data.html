@@ -43,6 +43,52 @@
             background-color: var(--danger-color);
         }
         
+        /* 濒危物种处理建议卡片 */
+        .endangered-advice-card {
+            border: 2px solid #dc3545;
+            background: linear-gradient(135deg, #fff5f5 0%, #ffffff 100%);
+            margin-top: 15px;
+        }
+        
+        .endangered-advice-card .card-header {
+            background: linear-gradient(90deg, #dc3545 0%, #c82333 100%);
+            color: white;
+            font-weight: 600;
+        }
+        
+        .endangered-advice-card .advice-item {
+            display: flex;
+            align-items: flex-start;
+            margin-bottom: 12px;
+            padding: 8px;
+            background: rgba(255, 255, 255, 0.7);
+            border-radius: 6px;
+            border-left: 3px solid #dc3545;
+        }
+        
+        .endangered-advice-card .advice-item:last-child {
+            margin-bottom: 0;
+        }
+        
+        .endangered-advice-card .advice-icon {
+            color: #dc3545;
+            margin-right: 10px;
+            margin-top: 2px;
+            font-size: 1.1rem;
+        }
+        
+        .endangered-advice-card .advice-text {
+            flex: 1;
+            font-size: 0.9rem;
+            color: #333;
+        }
+        
+        .endangered-advice-card .advice-title {
+            font-weight: 600;
+            color: #dc3545;
+            margin-bottom: 3px;
+        }
+        
         .lc-badge {
             background-color: var(--success-color);
         }
@@ -1063,6 +1109,8 @@
                                 </div>
                             </div>
                         </div>
+                        
+                        ${getEndangeredAdviceHTML(data.species)}
                     </div>
                     
                     <!-- 位置和设备信息 -->
@@ -1136,6 +1184,68 @@
             previewImage.src = imageSrc;
             const modal = new bootstrap.Modal(document.getElementById('imagePreviewModal'));
             modal.show();
+        }
+
+        // 生成濒危物种处理建议HTML
+        function getEndangeredAdviceHTML(species) {
+            // 检查是否为濒危物种（EN/CR/VU）
+            if (!species || !['EN', 'CR', 'VU'].includes(species.conservation_status)) {
+                return '';
+            }
+            
+            const statusMap = {
+                'CR': { name: '极危(CR)', level: '最高级别', color: '#dc3545' },
+                'EN': { name: '濒危(EN)', level: '高级别', color: '#e74c3c' },
+                'VU': { name: '易危(VU)', level: '中级别', color: '#f39c12' }
+            };
+            
+            const status = statusMap[species.conservation_status];
+            
+            return `
+                <div class="card detail-card endangered-advice-card">
+                    <div class="card-header">
+                        <i class="fas fa-exclamation-triangle me-2"></i>濒危物种处理建议
+                        <span class="badge bg-light text-danger ms-2">${status.name}</span>
+                    </div>
+                    <div class="card-body">
+                        <div class="advice-item">
+                            <i class="fas fa-bullhorn advice-icon"></i>
+                            <div class="advice-text">
+                                <div class="advice-title">立即上报</div>
+                                <div>该物种为${status.level}保护物种，请立即向保护区管理部门和上级主管部门报告此次观测记录。</div>
+                            </div>
+                        </div>
+                        <div class="advice-item">
+                            <i class="fas fa-camera advice-icon"></i>
+                            <div class="advice-text">
+                                <div class="advice-title">保留证据</div>
+                                <div>确保原始图像、音频数据完整保存，不要删除或修改任何原始文件，以备后续核查。</div>
+                            </div>
+                        </div>
+                        <div class="advice-item">
+                            <i class="fas fa-map-marked-alt advice-icon"></i>
+                            <div class="advice-text">
+                                <div class="advice-title">标记位置</div>
+                                <div>精确记录发现位置的GPS坐标，如有条件请在地图上标注活动范围，便于后续跟踪监测。</div>
+                            </div>
+                        </div>
+                        <div class="advice-item">
+                            <i class="fas fa-user-shield advice-icon"></i>
+                            <div class="advice-text">
+                                <div class="advice-title">加强巡护</div>
+                                <div>增加该区域的巡护频次，密切关注该物种的活动情况，防止人为干扰和非法捕猎。</div>
+                            </div>
+                        </div>
+                        <div class="advice-item">
+                            <i class="fas fa-file-alt advice-icon"></i>
+                            <div class="advice-text">
+                                <div class="advice-title">详细记录</div>
+                                <div>记录该物种的数量、行为、健康状况等信息，如有环志或其他标记也请一并记录。</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            `;
         }
 
         // 工具函数：格式化日期时间

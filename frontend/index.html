@@ -382,6 +382,62 @@
             background: linear-gradient(135deg, #27ae60, #1e8449);
             color: white;
         }
+        
+        /* 濒危物种横幅弹窗 */
+        .endangered-alert-banner {
+            background: linear-gradient(90deg, #dc3545 0%, #c82333 100%);
+            color: white;
+            padding: 12px 0;
+            box-shadow: 0 4px 12px rgba(220, 53, 69, 0.3);
+            animation: slideDown 0.5s ease-out;
+        }
+        
+        @keyframes slideDown {
+            from {
+                transform: translateY(-100%);
+                opacity: 0;
+            }
+            to {
+                transform: translateY(0);
+                opacity: 1;
+            }
+        }
+        
+        .endangered-alert-banner .alert-content {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            flex-wrap: wrap;
+            gap: 10px;
+        }
+        
+        .endangered-alert-banner i {
+            font-size: 1.5rem;
+            animation: pulse 1.5s infinite;
+        }
+        
+        @keyframes pulse {
+            0%, 100% { transform: scale(1); }
+            50% { transform: scale(1.1); }
+        }
+        
+        .endangered-alert-banner .alert-text {
+            font-size: 1rem;
+        }
+        
+        .endangered-alert-banner .species-names {
+            color: #ffeb3b;
+            font-weight: 600;
+        }
+        
+        .endangered-alert-banner .btn-light {
+            color: #dc3545;
+            font-weight: 600;
+        }
+        
+        .endangered-alert-banner .btn-close-white {
+            filter: invert(1) grayscale(100%) brightness(200%);
+        }
     </style>
 </head>
 <body>
@@ -394,9 +450,75 @@
             <div class="navbar-nav ms-auto">
                 <a class="nav-link active" href="/">仪表盘</a>
                 <a class="nav-link" href="/data.html">数据管理</a>
+                <button class="btn btn-outline-light btn-sm ms-2" onclick="showReportModal()">
+                    <i class="fas fa-file-pdf me-1"></i>生成报告
+                </button>
             </div>
         </div>
     </nav>
+
+    <!-- 濒危物种出现横幅弹窗 -->
+    <div id="endangered-alert" class="endangered-alert-banner" style="display: none;">
+        <div class="container">
+            <div class="alert-content">
+                <i class="fas fa-exclamation-triangle"></i>
+                <span class="alert-text">
+                    <strong>濒危物种出现！</strong>
+                    今日检测到 <span id="endangered-species-count">0</span> 种濒危物种
+                    <span id="endangered-species-names"></span>
+                </span>
+                <button class="btn btn-sm btn-light ms-3" onclick="viewEndangeredDetails()">
+                    查看详情
+                </button>
+                <button class="btn-close btn-close-white ms-2" onclick="closeEndangeredAlert()" aria-label="Close"></button>
+            </div>
+        </div>
+    </div>
+
+    <!-- 报告生成模态框 -->
+    <div class="modal fade" id="reportModal" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content">
+                <div class="modal-header bg-primary text-white">
+                    <h5 class="modal-title">
+                        <i class="fas fa-file-pdf me-2"></i>生成监测报告
+                    </h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="mb-3">
+                        <label class="form-label">报告周期</label>
+                        <div class="btn-group w-100" role="group">
+                            <input type="radio" class="btn-check" name="reportDays" id="reportDays1" value="1" autocomplete="off">
+                            <label class="btn btn-outline-primary" for="reportDays1">今日</label>
+                            
+                            <input type="radio" class="btn-check" name="reportDays" id="reportDays7" value="7" autocomplete="off" checked>
+                            <label class="btn btn-outline-primary" for="reportDays7">近7天</label>
+                            
+                            <input type="radio" class="btn-check" name="reportDays" id="reportDays30" value="30" autocomplete="off">
+                            <label class="btn btn-outline-primary" for="reportDays30">近30天</label>
+                        </div>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">报告格式</label>
+                        <select class="form-select" id="reportFormat">
+                            <option value="pdf" selected>PDF文档 (.pdf)</option>
+                        </select>
+                    </div>
+                    <div class="alert alert-info">
+                        <i class="fas fa-info-circle me-2"></i>
+                        报告将包含：观测统计、物种分布、濒危物种详情、设备监测情况
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">取消</button>
+                    <button type="button" class="btn btn-primary" onclick="generateReport()">
+                        <i class="fas fa-download me-1"></i>生成并下载
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
 
     <div class="container mt-4">
         <!-- 统计指标卡片 -->
@@ -534,27 +656,23 @@
                         <div id="heatmap-map"></div>
                         <div class="mt-3">
                             <div class="legend heatmap-legend">
-                                <h6>图例</h6>
+                                <h6>图例（以设备为中心）</h6>
                                 <div class="legend-items">
                                     <div class="legend-item">
-                                        <div class="legend-color" style="background-color: #95a5a6;"></div>
-                                        <span>无记录</span>
+                                        <div class="legend-color" style="background: linear-gradient(90deg, blue, cyan);"></div>
+                                        <span>设备位置（中心）</span>
                                     </div>
                                     <div class="legend-item">
-                                        <div class="legend-color" style="background-color: #ffffb2;"></div>
-                                        <span>1-5次观测</span>
+                                        <div class="legend-color" style="background: linear-gradient(90deg, cyan, lime);"></div>
+                                        <span>近设备区域</span>
                                     </div>
                                     <div class="legend-item">
-                                        <div class="legend-color" style="background-color: #fecc5c;"></div>
-                                        <span>6-10次观测</span>
+                                        <div class="legend-color" style="background: linear-gradient(90deg, lime, yellow);"></div>
+                                        <span>中距离区域</span>
                                     </div>
                                     <div class="legend-item">
-                                        <div class="legend-color" style="background-color: #fd8d3c;"></div>
-                                        <span>11-20次观测</span>
-                                    </div>
-                                    <div class="legend-item">
-                                        <div class="legend-color" style="background-color: #f03b20;"></div>
-                                        <span>20次以上观测</span>
+                                        <div class="legend-color" style="background: linear-gradient(90deg, yellow, red);"></div>
+                                        <span>高密度观测区</span>
                                     </div>
                                 </div>
                             </div>
@@ -933,49 +1051,139 @@
                 });
         }
 
-        // 渲染热力图
+        // 渲染热力图 - 以设备为中心的发散效果
         function renderHeatmap(data) {
             console.log('渲染热力图，数据点数量:', data.length);
-            console.log('热力图数据样本:', data.slice(0, 3));
             
             // 清除之前的图层
             if (heatmapLayer) {
                 map.removeLayer(heatmapLayer);
             }
             
-            // 准备热力图数据
-            // 注意：API 返回的 lat/lng 字段与值不匹配，需要交换
-            // lat 字段实际存储的是经度，lng 字段实际存储的是纬度
-            const heatData = data.map(point => {
-                // 交换 lat 和 lng 的值
-                const lat = parseFloat(point.lng);  // lng 字段实际存储纬度
-                const lng = parseFloat(point.lat);  // lat 字段实际存储经度
-                return [lat, lng, point.count];
+            if (data.length === 0) {
+                console.log('没有热力图数据');
+                return;
+            }
+            
+            // 获取设备位置作为热力中心
+            fetch(`${API_BASE_URL}/api/devices`)
+                .then(response => response.json())
+                .then(devicesResult => {
+                    if (devicesResult.success) {
+                        createDeviceCenteredHeatmap(data, devicesResult.data);
+                    }
+                })
+                .catch(error => {
+                    console.error('获取设备位置失败:', error);
+                    // 降级为普通热力图
+                    createSimpleHeatmap(data);
+                });
+        }
+        
+        // 以设备为中心创建热力图 - 使用device_id直接归属
+        function createDeviceCenteredHeatmap(observationData, devices) {
+            const deviceHeatData = [];
+            
+            // 按device_id统计每个设备的观测数量
+            const deviceObsCount = {};
+            observationData.forEach(point => {
+                const deviceId = point.device_id;
+                if (deviceId) {
+                    deviceObsCount[deviceId] = (deviceObsCount[deviceId] || 0) + point.count;
+                }
             });
             
-            console.log('处理后的热力图数据样本:', heatData.slice(0, 3));
+            console.log('各设备观测数量:', deviceObsCount);
             
-            // 创建热力图图层
-            heatmapLayer = L.heatLayer(heatData, {
-                radius: 25,
-                blur: 15,
-                maxZoom: 17,
+            // 为每个设备生成热力（包括无数据的设备）
+            devices.forEach(device => {
+                const deviceLat = device.latitude;
+                const deviceLng = device.longitude;
+                const deviceId = device.id;
+                
+                // 获取该设备的观测数量（无数据则为0）
+                const count = deviceObsCount[deviceId] || 0;
+                
+                // 基础权重：有数据的用实际数据，无数据的用最小值显示
+                const baseWeight = Math.max(count, 0.3);
+                
+                // 中心点
+                deviceHeatData.push([deviceLat, deviceLng, baseWeight]);
+                
+                // 生成发散点 - 扩大范围，快速衰减
+                const numRays = 12;
+                for (let i = 0; i < numRays; i++) {
+                    const angle = (i / numRays) * 2 * Math.PI;
+                    for (let r = 1; r <= 5; r++) {
+                        const distance = r * 0.002;
+                        const rayLat = deviceLat + Math.sin(angle) * distance;
+                        const rayLng = deviceLng + Math.cos(angle) * distance;
+                        // 更快的权重衰减（0.5^r 比 0.75^r 衰减更快）
+                        const weight = baseWeight * Math.pow(0.5, r);
+                        if (weight > 0.02) {
+                            deviceHeatData.push([rayLat, rayLng, weight]);
+                        }
+                    }
+                }
+            });
+            
+            console.log('设备中心热力数据点:', deviceHeatData.length, '设备数:', devices.length);
+            
+            // 找出最大权重用于归一化
+            const maxWeight = Math.max(...deviceHeatData.map(p => p[2]), 1);
+            
+            // 归一化，让颜色变化更明显
+            const normalizedData = deviceHeatData.map(point => {
+                const normalizedWeight = Math.min(point[2] / maxWeight * 1.2, 1);
+                return [point[0], point[1], normalizedWeight];
+            });
+            
+            heatmapLayer = L.heatLayer(normalizedData, {
+                radius: 70,
+                blur: 45,
+                maxZoom: 16,
+                max: 1.0,
                 gradient: {
-                    0.0: '#ffffb2',
-                    0.2: '#fecc5c',
-                    0.4: '#fd8d3c',
-                    0.6: '#f03b20',
-                    1.0: '#bd0026'
+                    0.0: '#0000ff',   // 深蓝（中心）
+                    0.1: '#0066ff',   // 蓝色
+                    0.25: '#00ccff',  // 浅蓝
+                    0.4: '#00ff66',   // 绿色
+                    0.55: '#ffff00',  // 黄色
+                    0.7: '#ff8800',   // 橙色
+                    0.85: '#ff4400',  // 红橙
+                    1.0: '#ff0000'    // 红色（边缘）
                 }
             }).addTo(map);
             
-            // 如果有数据点，调整地图视野到西溪湿地
-            if (data.length > 0) {
-                // 使用西溪湿地中心位置
-                map.setView([30.26806, 120.06631], 14);
-            }
+            console.log('设备中心热力图已渲染');
+            loadDeviceMarkers(currentDays);
+        }
+        
+        // 简单热力图（降级方案）
+        function createSimpleHeatmap(data) {
+            const heatData = data.map(point => [
+                parseFloat(point.lat),
+                parseFloat(point.lng),
+                point.count
+            ]);
             
-            // 加载设备标记
+            const maxCount = Math.max(...data.map(p => p.count));
+            
+            heatmapLayer = L.heatLayer(heatData, {
+                radius: 80,
+                blur: 40,
+                maxZoom: 16,
+                max: Math.max(maxCount * 0.8, 2),
+                gradient: {
+                    0.0: 'blue',
+                    0.25: 'cyan',
+                    0.5: 'lime',
+                    0.75: 'yellow',
+                    1.0: 'red'
+                }
+            }).addTo(map);
+            
+            console.log('简单热力图已渲染');
             loadDeviceMarkers(currentDays);
         }
 
@@ -1126,33 +1334,12 @@
             deviceMarkersLayer.addTo(map);
         }
         
-        // 更新图例
+        // 更新图例标题
         function updateLegend(thresholds, maxCount) {
-            const legendEl = document.querySelector('.heatmap-legend .legend-items');
-            if (!legendEl) return;
-            
-            legendEl.innerHTML = `
-                <div class="legend-item">
-                    <div class="legend-color" style="background-color: #95a5a6;"></div>
-                    <span>无记录</span>
-                </div>
-                <div class="legend-item">
-                    <div class="legend-color" style="background-color: #ffffb2;"></div>
-                    <span>1-${thresholds[0]}次</span>
-                </div>
-                <div class="legend-item">
-                    <div class="legend-color" style="background-color: #fecc5c;"></div>
-                    <span>${thresholds[0]+1}-${thresholds[1]}次</span>
-                </div>
-                <div class="legend-item">
-                    <div class="legend-color" style="background-color: #fd8d3c;"></div>
-                    <span>${thresholds[1]+1}-${thresholds[2]}次</span>
-                </div>
-                <div class="legend-item">
-                    <div class="legend-color" style="background-color: #f03b20;"></div>
-                    <span>${thresholds[2]}次以上</span>
-                </div>
-            `;
+            const legendEl = document.querySelector('.heatmap-legend h6');
+            if (legendEl) {
+                legendEl.textContent = `图例（最大密度: ${maxCount}次）`;
+            }
         }
 
         // 设置事件监听器
@@ -1560,6 +1747,137 @@
             if (!document.hidden) {
                 loadStatistics();
             }
+        });
+        
+        // 检测今日濒危物种并显示横幅
+        function checkTodayEndangered() {
+            fetch(`${API_BASE_URL}/api/observations?days=1&endangered=true`)
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success && data.data.observations.length > 0) {
+                        // 提取濒危物种名称（去重）
+                        const speciesSet = new Set();
+                        data.data.observations.forEach(obs => {
+                            if (obs.species) {
+                                speciesSet.add(obs.species.chinese_name);
+                            }
+                        });
+                        
+                        const speciesList = Array.from(speciesSet);
+                        if (speciesList.length > 0) {
+                            showEndangeredAlert(speciesList);
+                        }
+                    }
+                })
+                .catch(error => console.error('检测濒危物种失败:', error));
+        }
+        
+        // 显示濒危物种横幅
+        function showEndangeredAlert(speciesList) {
+            const alertBanner = document.getElementById('endangered-alert');
+            const countSpan = document.getElementById('endangered-species-count');
+            const namesSpan = document.getElementById('endangered-species-names');
+            
+            countSpan.textContent = speciesList.length;
+            
+            // 显示物种名称（最多显示3个）
+            let namesText = '';
+            if (speciesList.length <= 3) {
+                namesText = '：' + speciesList.join('、');
+            } else {
+                namesText = '：' + speciesList.slice(0, 3).join('、') + ' 等';
+            }
+            namesSpan.innerHTML = `<span class="species-names">${namesText}</span>`;
+            
+            // 显示横幅
+            alertBanner.style.display = 'block';
+            
+            // 5秒后自动隐藏（可选）
+            // setTimeout(closeEndangeredAlert, 10000);
+        }
+        
+        // 关闭濒危物种横幅
+        function closeEndangeredAlert() {
+            const alertBanner = document.getElementById('endangered-alert');
+            alertBanner.style.display = 'none';
+        }
+        
+        // 查看濒危物种详情
+        function viewEndangeredDetails() {
+            window.location.href = 'data.html?endangered=true&days=1';
+        }
+        
+        // 显示报告生成弹窗
+        function showReportModal() {
+            const modal = new bootstrap.Modal(document.getElementById('reportModal'));
+            modal.show();
+        }
+        
+        // 生成监测报告
+        async function generateReport() {
+            const days = document.querySelector('input[name="reportDays"]:checked').value;
+            const format = document.getElementById('reportFormat').value;
+            
+            // 显示加载状态
+            const btn = document.querySelector('#reportModal .btn-primary');
+            const originalText = btn.innerHTML;
+            btn.innerHTML = '<i class="fas fa-spinner fa-spin me-1"></i>生成中...';
+            btn.disabled = true;
+            
+            try {
+                const response = await fetch(`${API_BASE_URL}/api/report/generate`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        days: parseInt(days),
+                        format: format
+                    })
+                });
+                
+                if (response.ok) {
+                    // 获取文件名
+                    const contentDisposition = response.headers.get('content-disposition');
+                    let filename = '鸟类监测报告.pdf';
+                    if (contentDisposition) {
+                        const match = contentDisposition.match(/filename="(.+)"/);
+                        if (match) filename = match[1];
+                    }
+                    
+                    // 下载文件
+                    const blob = await response.blob();
+                    const url = window.URL.createObjectURL(blob);
+                    const a = document.createElement('a');
+                    a.href = url;
+                    a.download = filename;
+                    document.body.appendChild(a);
+                    a.click();
+                    window.URL.revokeObjectURL(url);
+                    document.body.removeChild(a);
+                    
+                    // 关闭弹窗
+                    bootstrap.Modal.getInstance(document.getElementById('reportModal')).hide();
+                    
+                    // 显示成功提示
+                    showToast('报告生成成功！', 'success');
+                } else {
+                    const error = await response.json();
+                    showToast(error.message || '报告生成失败', 'error');
+                }
+            } catch (error) {
+                console.error('生成报告失败:', error);
+                showToast('报告生成失败，请稍后重试', 'error');
+            } finally {
+                // 恢复按钮状态
+                btn.innerHTML = originalText;
+                btn.disabled = false;
+            }
+        }
+        
+        // 页面加载时检测今日濒危物种
+        document.addEventListener('DOMContentLoaded', function() {
+            setTimeout(checkTodayEndangered, 2000); // 延迟2秒执行
         });
     </script>
 </body>

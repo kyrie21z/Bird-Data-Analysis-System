@@ -1,0 +1,30 @@
+@font-face {
+    font-family: 'AaMeiRenZhuan';
+    src: url('../assets/fonts/AaMeiRenZhuan-JianFan-Web.woff2') format('woff2');
+    font-style: normal;
+    font-weight: 400;
+    font-display: swap;
+}
+
+.navbar-brand .brand-icon {
+    width: 36px;
+    height: 36px;
+    padding: 3px;
+    margin-right: 8px;
+    background-color: white;
+    border-radius: 8px;
+    object-fit: contain;
+    vertical-align: middle;
+}
+
+.navbar-brand .brand-title {
+    font-family: 'AaMeiRenZhuan', 'Aa美人篆（简繁）', 'Noto Sans SC', sans-serif;
+    font-size: 22px;
+    font-weight: 700;
+}
+
+@media (max-width: 768px) {
+    .navbar-brand .brand-title {
+        font-size: 18px;
+    }
+}
